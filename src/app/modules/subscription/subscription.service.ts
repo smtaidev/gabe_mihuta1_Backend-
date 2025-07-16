@@ -17,8 +17,6 @@ const createSubscription = async (email: string, planId: string) => {
       where: { email },
     });
 
-    //console.log(`User found: ${user?.email}`);
-
     if (!user) {
       throw new ApiError(status.NOT_FOUND, "User not found");
     }
@@ -32,7 +30,51 @@ const createSubscription = async (email: string, planId: string) => {
       throw new ApiError(status.NOT_FOUND, "Plan not found");
     }
 
-    // 4. Create payment intent in Stripe
+    // 3. Handle free plan (amount = 0)
+    if (plan.amount === 0) {
+      // For free plan, directly set the payment status to "COMPLETED"
+      const startDate = new Date();
+      
+      // Handle existing subscription for free plan
+      const existingSubscription = await tx.subscription.findUnique({
+        where: { userId: user.id },
+      });
+
+      let subscription;
+      if (existingSubscription?.paymentStatus === "PENDING") {
+        // Update existing subscription for free plan
+        subscription = await tx.subscription.update({
+          where: { userId: user.id },
+          data: {
+            planId,
+            startDate,
+            amount: 0, // Free plan amount
+            stripePaymentId: "free-plan", // Dummy payment ID for free plan
+            paymentStatus: "COMPLETED", // Mark as completed for free plan
+          },
+        });
+      } else {
+        // Create new free subscription
+        subscription = await tx.subscription.create({
+          data: {
+            userId: user.id,
+            planId,
+            startDate,
+            amount: 0, // Free plan amount
+            stripePaymentId: "free-plan", // Dummy payment ID for free plan
+            paymentStatus: "COMPLETED", // Mark as completed for free plan
+          },
+        });
+      }
+
+      return {
+        subscription,
+        clientSecret: null, // No Stripe client secret for free plan
+        paymentIntentId: null, // No Stripe payment intent ID for free plan
+      };
+    }
+
+    // 4. Create payment intent in Stripe for paid plans
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(plan.amount * 100),
       currency: plan.currency ? plan.currency.toLowerCase() : "usd",
@@ -45,7 +87,7 @@ const createSubscription = async (email: string, planId: string) => {
       },
     });
 
-    // 5. Handle existing subscription
+    // 5. Handle existing subscription for paid plan
     const existingSubscription = await tx.subscription.findUnique({
       where: { userId: user.id },
     });
@@ -65,7 +107,7 @@ const createSubscription = async (email: string, planId: string) => {
         },
       });
     } else {
-      // 6. Create new subscription with calculated endDate
+      // 6. Create new subscription with calculated endDate for paid plan
       subscription = await tx.subscription.create({
         data: {
           userId: user.id,
@@ -85,6 +127,8 @@ const createSubscription = async (email: string, planId: string) => {
     };
   });
 };
+
+
 
 const getAllSubscription = async (query: Record<string, unknown>) => {
   const queryBuilder = new QueryBuilder(prisma.subscription, query);

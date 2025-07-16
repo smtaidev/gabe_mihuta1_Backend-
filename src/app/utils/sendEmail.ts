@@ -38,15 +38,14 @@ export const sendEmail = async (
     </table>
 
     
-    ${
-      confirmLink
-        ? `<h3 style="text-align: center; color: #000;">Verify Your Email Within 10 Minutes</h3>
+    ${confirmLink
+      ? `<h3 style="text-align: center; color: #000;">Verify Your Email Within 10 Minutes</h3>
        <div style="padding: 0 1em;">
          <p style="text-align: left; line-height: 28px; color: #000;">
            <strong style="color: #000;">Verification Link:</strong> Click ${clickableConfirm} to verify your email.
          </p>
        </div>`
-        : `<h3 style="text-align: center; color: #000;">Reset Your Password Within 10 Minutes</h3>
+      : `<h3 style="text-align: center; color: #000;">Reset Your Password Within 10 Minutes</h3>
        <div style="padding: 0 1em;">
          <p style="text-align: left; line-height: 28px; color: #000;">
            <strong style="color: #000;">Reset Link:</strong> Click ${clickableResetPass} to reset your password.
@@ -59,11 +58,10 @@ export const sendEmail = async (
   await transporter.sendMail({
     from: `"BuildAI" <${config.sendEmail.email_from}>`,
     to,
-    subject: `${
-      resetPassLink
+    subject: `${resetPassLink
         ? `Reset Your Password within ${config.jwt.resetPassword.expiresIn} Minutes.`
         : `Verify Your Email within ${config.jwt.resetPassword.expiresIn} Minutes.`
-    }`,
+      }`,
     text: "Hello world?",
     html: html,
   });
