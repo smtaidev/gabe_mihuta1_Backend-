@@ -6,29 +6,39 @@ import Stripe from "stripe";
 
 // Helper function to calculate end date based on plan interval
 const calculateEndDate = (
-  startDate: Date,
-  interval: Interval,
-  intervalCount: number
+  startDate: Date
 ): Date => {
   const endDate = new Date(startDate);
 
-  switch (interval) {
-    case "week":
-      endDate.setDate(endDate.getDate() + 7 * intervalCount);
-      break;
-    case "month":
-      endDate.setMonth(endDate.getMonth() + intervalCount);
+  endDate.setMonth(endDate.getMonth() + 1);
       // Handle month overflow (e.g., Jan 31 + 1 month)
       if (endDate.getDate() !== startDate.getDate()) {
         endDate.setDate(0); // Set to last day of previous month
       }
-      break;
-    default:
-      throw new ApiError(
-        status.BAD_REQUEST,
-        `Unsupported interval: ${interval}`
-      );
-  }
+
+  // switch (interval) {
+  //   case "day":
+  //     endDate.setDate(endDate.getDate() + intervalCount);
+  //     break;
+  //   case "week":
+  //     endDate.setDate(endDate.getDate() + 7 * intervalCount);
+  //     break;
+  //   case "month":
+  //     endDate.setMonth(endDate.getMonth() + intervalCount);
+  //     // Handle month overflow (e.g., Jan 31 + 1 month)
+  //     if (endDate.getDate() !== startDate.getDate()) {
+  //       endDate.setDate(0); // Set to last day of previous month
+  //     }
+  //     break;
+  //   case "year":
+  //     endDate.setFullYear(endDate.getFullYear() + intervalCount);
+  //     break;
+  //   default:
+  //     throw new ApiError(
+  //       status.BAD_REQUEST,
+  //       `Unsupported interval: ${interval}`
+  //     );
+  // }
 
   return endDate;
 };
@@ -66,12 +76,17 @@ const handlePaymentIntentSucceeded = async (
   }
 
   const startDate = new Date();
+  const endDate = calculateEndDate(
+    startDate
+  );
 
+  // Execute both updates in a transaction
   await prisma.$transaction([
     prisma.user.update({
       where: { id: payment.userId },
       data: {
         isSubscribed: true,
+        planExpiration: endDate,
       },
     }),
     prisma.subscription.update({
@@ -79,6 +94,7 @@ const handlePaymentIntentSucceeded = async (
       data: {
         paymentStatus: PaymentStatus.COMPLETED,
         startDate,
+        endDate,
       },
     }),
   ]);

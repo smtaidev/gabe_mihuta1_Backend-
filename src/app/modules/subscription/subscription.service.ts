@@ -30,7 +30,6 @@ const createSubscription = async (email: string, planId: string) => {
       throw new ApiError(status.NOT_FOUND, "Plan not found");
     }
 
-    // 3. Handle free plan (amount = 0)
     if (plan.amount === 0) {
       // For free plan, directly set the payment status to "COMPLETED"
       const startDate = new Date();

@@ -52,7 +52,7 @@ model User {
   fullName          String?           @default("")
   email             String            @unique
   password          String
-  profilePic        String?           @default("https://www.shutterstock.com/image-vector/avatar-gender-neutral-silhouette-vector-600nw-2470054311.jpg")
+  profilePic        String?           @default("")
   passwordChangedAt DateTime?
   isVerified        Boolean           @default(false)
   isResetPassword   Boolean           @default(false)
@@ -61,6 +61,7 @@ model User {
   role              UserRole          @default(USER)
   status            UserStatus        @default(ACTIVE)
   isSubscribed      Boolean           @default(false)
+  planExpiration    DateTime?
   subscriptionType  SubscriptionType?
   teeRegistration   String           @default("")
   vatNumber         String           @default("")
@@ -121,7 +122,7 @@ model Plan {
   id            String         @id @default(auto()) @map("_id") @db.ObjectId
   planName      String
   amount        Float
-  currency      String? @default("usd")
+  currency      String?         @default("usd")
   interval      Interval?
   intervalCount Int?
   productId     String
