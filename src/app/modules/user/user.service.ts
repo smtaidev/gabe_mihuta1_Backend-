@@ -155,8 +155,27 @@ const updateRoleIntoDB = async (payload: Partial<User>) => {
     },
   });
 
+    const jwtPayload = {
+    firstName: cachedUser.firstName,
+    lastName: cachedUser.lastName,
+    fullName: `${cachedUser.firstName} ${cachedUser.lastName}`,
+    email: cachedUser.email,
+    role: payload.role || cachedUser.role,
+    profilePic: cachedUser?.profilePic || "",
+    isVerified: false,
+  };
+
+    const accessToken = createToken(
+    jwtPayload,
+    config.jwt.access.secret as string,
+    config.jwt.resetPassword.expiresIn as string
+  );
+
+  const confirmedLink = `${config.verifyEmailLink}?token=${accessToken}`;
+  await sendEmail(cachedUser.email, undefined, confirmedLink);
+
   return {
-    message: "Role updated for user!",
+    message: "We have sent a confirmation email to your email address. Please check your inbox.",
   };
 };
 
