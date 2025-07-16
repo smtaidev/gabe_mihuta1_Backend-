@@ -3,6 +3,7 @@ import config from "../../config";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { UserService } from "./user.service";
+import ApiError from "../../errors/ApiError";
 
 const createUser = catchAsync(async (req, res) => {
   const result = await UserService.createUserIntoDB(req.body);
@@ -14,15 +15,26 @@ const createUser = catchAsync(async (req, res) => {
   });
 });
 
-const updateRole = catchAsync(async (req, res) => {
-  const  userId  = req.user.id;
-  await UserService.updateRoleIntoDB(userId, req.body);
+// const updateRole = catchAsync(async (req, res) => {
+//   const  userId  = req.user.id;
+//   await UserService.updateRoleIntoDB(userId, req.body);
+
+//   sendResponse(res, {
+//     statusCode: status.OK,
+//     message: "User role updated successfully!",
+//   });
+// });
+
+export const updateRole = catchAsync(async (req, res) => {
+  const result = await UserService.updateRoleIntoDB(req.body);
 
   sendResponse(res, {
     statusCode: status.OK,
-    message: "User role updated successfully!",
+    message: result.message,
   });
 });
+
+
 
 const getAllUser = catchAsync(async (req, res) => {
   const result = await UserService.getAllUserFromDB(req.query);
