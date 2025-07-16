@@ -30,7 +30,7 @@ export const sendEmail = async (
       <tr>
         <td>
           <div style="padding: 5px; text-align: center;">
-            <img src="https://res.cloudinary.com/shariful10/image/upload/v1751971147/logo_cfqynn.png" alt="logo" style="height: 40px; margin-bottom: 16px;" />
+            <img src="https://th.bing.com/th/id/OIP.XV7CHHw9HyPXbVFsJBRPFAHaHa?w=175&h=180&c=7&r=0&o=7&pid=1.7&rm=3" alt="logo" style="height: 40px; margin-bottom: 16px;" />
           </div>
         </td>
         <td style="text-align: right; color: #999;">${formattedDate}</td>
@@ -57,7 +57,7 @@ export const sendEmail = async (
   `;
 
   await transporter.sendMail({
-    from: `"Super Job" <${config.sendEmail.email_from}>`,
+    from: `"BuildAI" <${config.sendEmail.email_from}>`,
     to,
     subject: `${
       resetPassLink
