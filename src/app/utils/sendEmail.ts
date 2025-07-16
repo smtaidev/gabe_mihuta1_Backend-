@@ -29,7 +29,7 @@ export const sendEmail = async (
     <table style="width: 100%;">
       <tr>
         <td>
-          <div style="padding: 5px; text-align: center;">
+          <div style="padding: 7px; text-align: center;">
             <img src="https://i.ibb.co/Qj9xQhtc/Group-24.png" alt="logo" style="height: 40px; margin-bottom: 16px;" />
           </div>
         </td>
@@ -57,7 +57,7 @@ export const sendEmail = async (
   `;
 
   await transporter.sendMail({
-    from: `"Super Job" <${config.sendEmail.email_from}>`,
+    from: `"BuildAI" <${config.sendEmail.email_from}>`,
     to,
     subject: `${
       resetPassLink
