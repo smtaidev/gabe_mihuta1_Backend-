@@ -15,15 +15,22 @@ router.get("/", auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), UserController.getAl
 
 router.get("/:userId", auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), UserController.getSingleUserById);
 
+
+
+
 router.post(
   "/register",
   validateRequest(UserValidation.createUserValidationSchema),
   UserController.createUser
 );
 
+
+
+
+
+
 router.post(
   "/update-role",
-  auth(),
   UserController.updateRole
 );
 

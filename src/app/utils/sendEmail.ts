@@ -30,7 +30,7 @@ export const sendEmail = async (
       <tr>
         <td>
           <div style="padding: 5px; text-align: center;">
-            <img src="https://res.cloudinary.com/shariful10/image/upload/v1751971147/logo_cfqynn.png" alt="logo" style="height: 40px; margin-bottom: 16px;" />
+            <img src="https://i.ibb.co/Qj9xQhtc/Group-24.png" alt="logo" style="height: 40px; margin-bottom: 16px;" />
           </div>
         </td>
         <td style="text-align: right; color: #999;">${formattedDate}</td>
