@@ -29,7 +29,7 @@ export const sendEmail = async (
     <table style="width: 100%;">
       <tr>
         <td>
-          <div style="padding: 5px; text-align: center;">
+          <div style="padding: 8px; text-align: center;">
             <img src="https://th.bing.com/th/id/OIP.XV7CHHw9HyPXbVFsJBRPFAHaHa?w=175&h=180&c=7&r=0&o=7&pid=1.7&rm=3" alt="logo" style="height: 40px; margin-bottom: 16px;" />
           </div>
         </td>
