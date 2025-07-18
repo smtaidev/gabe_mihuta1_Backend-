@@ -24,18 +24,15 @@ router.post(
   UserController.createUser
 );
 
-
-
-
-
-
 router.post(
   "/update-role",
   UserController.updateRole
 );
 
-router.patch("/suspend/:id", UserController.suspendUser);
-
+router.patch("/suspend/:id",
+  auth(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+  UserController.suspendUser
+);
 
 router.patch(
   "/update",
@@ -50,11 +47,11 @@ router.patch(
       next(new ApiError(status.BAD_REQUEST, "Invalid JSON in 'data' field"));
     }
   },
-  auth(UserRole.ADMIN, UserRole.USER),
+  auth(UserRole.ADMIN, UserRole.ENGINEER, UserRole.USER),
   validateRequest(UserValidation.updateUserValidationSchema),
   UserController.updateUser
 );
 
-router.delete("/:userId", auth(UserRole.ADMIN), UserController.deleteUser);
+router.delete("/:userId", auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), UserController.deleteUser);
 
 export const UserRoutes = router;

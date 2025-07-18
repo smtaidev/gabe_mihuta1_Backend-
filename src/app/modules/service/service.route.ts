@@ -22,19 +22,6 @@ router.post(
       next(new ApiError(status.BAD_REQUEST, "Invalid JSON in 'data' field"));
     }
   },
-  // << Added auth middleware to protect route
-  upload.single("file"),
-   (req: Request, res: Response, next: NextFunction) => {
-    try {
-      if (req.body?.data) {
-        req.body = JSON.parse(req.body.data);
-      }
-      next(UserRole.SUPER_ADMIN);
-    } catch {
-      next(new ApiError(status.BAD_REQUEST, "Invalid JSON in 'data' field"));
-    }
-  },
-  auth(),
   ServiceController.createNewService
 );
 

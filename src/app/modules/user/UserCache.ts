@@ -20,4 +20,3 @@ export const setLastCreatedUserId = (id: string) => {
 };
 
 export const getLastCreatedUserId = () => lastCreatedUserId;
-

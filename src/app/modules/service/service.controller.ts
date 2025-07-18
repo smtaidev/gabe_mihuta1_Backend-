@@ -7,7 +7,6 @@ import ApiError from "../../errors/ApiError";
 
 // Create a new service
 const createNewService = catchAsync(async (req, res) => {
-  console.log("Request body:", req.body);
 
   // Validate required field
   if (!req.body.serviceName) {

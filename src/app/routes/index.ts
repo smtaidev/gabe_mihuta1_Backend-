@@ -33,10 +33,6 @@ const moduleRoutes = [
     path: "/projects",
     route: ProjectRoute,
   },
-  {
-    path: "/subscriptions",
-    route: SubscriptionRoutes,
-  },
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
