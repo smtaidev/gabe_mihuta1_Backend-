@@ -8,9 +8,9 @@ import config from "../../config";
 import { createToken } from "../auth/auth.utils";
 import hashPassword from "../../helpers/hashPassword";
 import { passwordCompare } from "../../utils/comparePasswords";
+import { getLastCreatedUserId, getUserFromCache, setLastCreatedUserId, setUserToCache } from "./UserCache";
 
 async function createUserIntoDB(payload: User) {
-  console.log("Creating user with payload:", payload);
   const isUserExistByEmail = await prisma.user.findUnique({
     where: { email: payload.email },
   });
@@ -22,8 +22,6 @@ async function createUserIntoDB(payload: User) {
     );
   }
 
-
-  //hello world
   const hashedPassword = await hashPassword(payload.password);
 
   const userData = {
@@ -33,39 +31,28 @@ async function createUserIntoDB(payload: User) {
     isVerified: false,
   };
 
-  const jwtPayload = {
-    firstName: payload.firstName,
-    lastName: payload.lastName,
-    fullName: `${payload.firstName} ${payload.lastName}`,
-    email: payload.email,
-    role: UserRole.USER,
-    profilePic: payload?.profilePic || "",
-    isVerified: false,
-  };
+  
+   const newUser = await prisma.user.create({ data: userData });
 
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt.access.secret as string,
-    config.jwt.resetPassword.expiresIn as string
-  );
-  await prisma.user.create({ data: userData });
-
-
-  const confirmedLink = `${config.verifyEmailLink}?token=${accessToken}`;
-  await sendEmail(payload.email, undefined, confirmedLink);
+  setUserToCache(newUser.id, newUser);
+  setLastCreatedUserId(newUser.id); 
 
   return {
-    message: "We have sent a confirmation email to your email address. Please check your inbox.",
+    message: "User created successfully!",
   };
 }
 
-const updateRoleIntoDB = async (userId: string, payload: Partial<User>) => {
-  const isUserExist = await prisma.user.findUnique({
-    where: { id: userId },
-  });
+const updateRoleIntoDB = async (payload: Partial<User>) => {
+  const userId = getLastCreatedUserId();
 
-  if (!isUserExist) {
-    throw new ApiError(status.NOT_FOUND, "User not found!");
+  if (!userId) {
+    throw new ApiError(status.BAD_REQUEST, "No user found in state");
+  }
+
+  const cachedUser = getUserFromCache(userId);
+
+  if (!cachedUser) {
+    throw new ApiError(status.NOT_FOUND, "User not found in cache");
   }
 
   if (payload.role === "ENGINEER" && !payload.teeRegistration) {
@@ -76,7 +63,6 @@ const updateRoleIntoDB = async (userId: string, payload: Partial<User>) => {
     throw new ApiError(status.BAD_REQUEST, "VAT number is required for Companies");
   }
 
-
   await prisma.user.update({
     where: { id: userId },
     data: {
@@ -86,7 +72,28 @@ const updateRoleIntoDB = async (userId: string, payload: Partial<User>) => {
     },
   });
 
-  return null;
+    const jwtPayload = {
+    firstName: cachedUser.firstName,
+    lastName: cachedUser.lastName,
+    fullName: `${cachedUser.firstName} ${cachedUser.lastName}`,
+    email: cachedUser.email,
+    role: payload.role || cachedUser.role,
+    profilePic: cachedUser?.profilePic || "",
+    isVerified: false,
+  };
+
+    const accessToken = createToken(
+    jwtPayload,
+    config.jwt.access.secret as string,
+    config.jwt.resetPassword.expiresIn as string
+  );
+
+  const confirmedLink = `${config.verifyEmailLink}?token=${accessToken}`;
+  await sendEmail(cachedUser.email, undefined, confirmedLink);
+
+  return {
+    message: "We have sent a confirmation email to your email address. Please check your inbox.",
+  };
 };
 
 const getAllUserFromDB = async (query: Record<string, unknown>) => {

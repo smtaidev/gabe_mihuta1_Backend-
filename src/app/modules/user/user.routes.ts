@@ -21,9 +21,9 @@ router.post(
   UserController.createUser
 );
 
+
 router.post(
   "/update-role",
-  auth(),
   UserController.updateRole
 );
 

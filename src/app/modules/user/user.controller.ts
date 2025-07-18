@@ -3,24 +3,29 @@ import config from "../../config";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { UserService } from "./user.service";
+import ApiError from "../../errors/ApiError";
 
 const createUser = catchAsync(async (req, res) => {
   const result = await UserService.createUserIntoDB(req.body);
-  console.log(result);
+
+  if (!result) {
+    throw new ApiError(status.INTERNAL_SERVER_ERROR, "User creation failed.");
+  }
 
   sendResponse(res, {
     statusCode: status.CREATED,
-    message: result.message,
+    message: result.message, // Always return a data field to standardize
   });
 });
 
-const updateRole = catchAsync(async (req, res) => {
-  const  userId  = req.user.id;
-  await UserService.updateRoleIntoDB(userId, req.body);
+
+
+export const updateRole = catchAsync(async (req, res) => {
+  const result = await UserService.updateRoleIntoDB(req.body);
 
   sendResponse(res, {
     statusCode: status.OK,
-    message: "User role updated successfully!",
+    message: result.message,
   });
 });
 
