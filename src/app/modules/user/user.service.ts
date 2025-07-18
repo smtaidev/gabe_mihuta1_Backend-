@@ -190,7 +190,7 @@ const updateUserIntoDB = async (userId: string, payload: UpdateUserPayload) => {
       vatNumber: payload.vatNumber || "",
       password: payload.password,
       profilePic: payload.profilePic || "",
-      phone: payload.phone,
+      phone: payload.phone || "",
     },
     select: {
       id: true,
