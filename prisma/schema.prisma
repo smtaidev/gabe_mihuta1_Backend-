@@ -51,7 +51,7 @@ model User {
   lastName          String            
   fullName          String?           @default("")
   email             String            @unique
-  phone             String?           @unique
+  phone             String           @unique
   password          String
   profilePic        String?           @default("")
   passwordChangedAt DateTime?
