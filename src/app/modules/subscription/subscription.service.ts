@@ -17,6 +17,7 @@ const createSubscription = async (email: string, planId: string) => {
       where: { email },
     });
 
+    //console.log(user);
     if (!user) {
       throw new ApiError(status.NOT_FOUND, "User not found");
     }

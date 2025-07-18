@@ -46,6 +46,8 @@ const updateUser = catchAsync(async (req, res) => {
   if (req.file) {
     req.body.profilePic = `${config.imageUrl}/uploads/${req.file.filename}`;
   }
+  
+  console.log(userId);
 
   const result = await UserService.updateUserIntoDB(userId, req.body);
 

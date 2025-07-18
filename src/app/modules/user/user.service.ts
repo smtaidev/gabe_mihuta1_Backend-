@@ -7,6 +7,7 @@ import QueryBuilder from "../../builder/QueryBuilder";
 import config from "../../config";
 import { createToken } from "../auth/auth.utils";
 import hashPassword from "../../helpers/hashPassword";
+import { passwordCompare } from "../../utils/comparePasswords";
 
 async function createUserIntoDB(payload: User) {
   console.log("Creating user with payload:", payload);
@@ -93,16 +94,16 @@ const getAllUserFromDB = async (query: Record<string, unknown>) => {
     .search(["fullName", "email"])
     .select(["createdAt", "fullName", "email", "role", "status"])
     .paginate();
- 
+
   const [result, meta] = await Promise.all([
     userQuery.execute(),
     userQuery.countTotal(),
   ]);
- 
+
   if (!result.length) {
     throw new ApiError(status.NOT_FOUND, "No users found!");
   }
- 
+
   // Remove password from each user
   const data = result.map((user: User) => {
     const { password, ...rest } = user;
@@ -117,7 +118,12 @@ const getAllUserFromDB = async (query: Record<string, unknown>) => {
   };
 };
 
-const updateUserIntoDB = async (userId: string, payload: Partial<User>) => {
+type UpdateUserPayload = Partial<User> & {
+  newPassword?: string;
+  confirmPassword?: string;
+};
+
+const updateUserIntoDB = async (userId: string, payload: UpdateUserPayload) => {
   const isUserExist = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -126,6 +132,42 @@ const updateUserIntoDB = async (userId: string, payload: Partial<User>) => {
     throw new ApiError(status.NOT_FOUND, "User not found!");
   }
 
+  if (!payload.password) {
+    throw new ApiError(status.BAD_REQUEST, "Current password is required to update user.");
+  }
+
+  console.log(payload.password);
+  console.log(payload.newPassword);
+  const isPasswordMatched = await passwordCompare(
+    payload.password,
+    isUserExist.password
+  );
+
+  if (!isPasswordMatched) {
+    throw new ApiError(status.BAD_REQUEST, "Current password is incorrect.");
+  }
+  console.log(payload.confirmPassword);
+  // Handle password change (optional)
+  if (payload.newPassword && payload.confirmPassword) {
+    if (!payload.password) {
+      throw new ApiError(status.BAD_REQUEST, "Current password is required to change password.");
+    }
+
+
+
+    if (payload.newPassword !== payload.confirmPassword) {
+      throw new ApiError(
+        status.BAD_REQUEST,
+        "New password and confirm password do not match."
+      );
+    }
+
+    payload.password = await hashPassword(payload.newPassword!);
+  } else {
+    payload.password = isUserExist.password; // Keep existing password if no change requested
+  }
+
+  // Handle profilePic fallback
   if (!payload.profilePic) {
     payload.profilePic = isUserExist.profilePic;
   }
@@ -135,7 +177,13 @@ const updateUserIntoDB = async (userId: string, payload: Partial<User>) => {
     data: {
       firstName: payload.firstName,
       lastName: payload.lastName,
+      email: payload.email,
+      role: payload.role,
+      teeRegistration: payload.teeRegistration || "",
+      vatNumber: payload.vatNumber || "",
+      password: payload.password,
       profilePic: payload.profilePic || "",
+      phone: payload.phone || "",
     },
     select: {
       id: true,
@@ -152,6 +200,7 @@ const updateUserIntoDB = async (userId: string, payload: Partial<User>) => {
 
   return updatedUser;
 };
+
 
 const getSingleUserByIdFromDB = async (userId: string) => {
   const user = await prisma.user.findUnique({
