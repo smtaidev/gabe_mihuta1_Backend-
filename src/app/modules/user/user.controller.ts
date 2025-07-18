@@ -29,6 +29,8 @@ export const updateRole = catchAsync(async (req, res) => {
   });
 });
 
+
+
 const getAllUser = catchAsync(async (req, res) => {
   const result = await UserService.getAllUserFromDB(req.query);
 

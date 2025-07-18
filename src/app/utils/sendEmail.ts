@@ -29,8 +29,8 @@ export const sendEmail = async (
     <table style="width: 100%;">
       <tr>
         <td>
-          <div style="padding: 8px; text-align: center;">
-            <img src="https://th.bing.com/th/id/OIP.XV7CHHw9HyPXbVFsJBRPFAHaHa?w=175&h=180&c=7&r=0&o=7&pid=1.7&rm=3" alt="logo" style="height: 40px; margin-bottom: 16px;" />
+          <div style="padding: 7px; text-align: center;">
+            <img src="https://i.ibb.co/Qj9xQhtc/Group-24.png" alt="logo" style="height: 40px; margin-bottom: 16px;" />
           </div>
         </td>
         <td style="text-align: right; color: #999;">${formattedDate}</td>
@@ -38,15 +38,14 @@ export const sendEmail = async (
     </table>
 
     
-    ${
-      confirmLink
-        ? `<h3 style="text-align: center; color: #000;">Verify Your Email Within 10 Minutes</h3>
+    ${confirmLink
+      ? `<h3 style="text-align: center; color: #000;">Verify Your Email Within 10 Minutes</h3>
        <div style="padding: 0 1em;">
          <p style="text-align: left; line-height: 28px; color: #000;">
            <strong style="color: #000;">Verification Link:</strong> Click ${clickableConfirm} to verify your email.
          </p>
        </div>`
-        : `<h3 style="text-align: center; color: #000;">Reset Your Password Within 10 Minutes</h3>
+      : `<h3 style="text-align: center; color: #000;">Reset Your Password Within 10 Minutes</h3>
        <div style="padding: 0 1em;">
          <p style="text-align: left; line-height: 28px; color: #000;">
            <strong style="color: #000;">Reset Link:</strong> Click ${clickableResetPass} to reset your password.
@@ -59,11 +58,10 @@ export const sendEmail = async (
   await transporter.sendMail({
     from: `"BuildAI" <${config.sendEmail.email_from}>`,
     to,
-    subject: `${
-      resetPassLink
+    subject: `${resetPassLink
         ? `Reset Your Password within ${config.jwt.resetPassword.expiresIn} Minutes.`
         : `Verify Your Email within ${config.jwt.resetPassword.expiresIn} Minutes.`
-    }`,
+      }`,
     text: "Hello world?",
     html: html,
   });
