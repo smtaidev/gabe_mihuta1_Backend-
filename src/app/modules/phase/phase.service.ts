@@ -59,7 +59,7 @@ const fetchAndSaveAIWorkoutPlan = async (
     }
 
     // Delete old phase if exists
-   //await prisma.workoutPlanDay.deleteMany({ where: { userId, phase: phase-1 } });
+    //await prisma.workoutPlanDay.deleteMany({ where: { userId, phase: phase-1 } });
 
     // ✅ Find last scheduled day for this user
     const lastDay = await prisma.workoutPlanDay.findFirst({
@@ -118,8 +118,8 @@ const autoProgressPhases = async (userId: string, requestBody: FetchAIWorkoutPla
     data: { completed: true },
   });
 
-const subscription = await prisma.subscription.findFirst({
-    where: { userId, status: "active" },
+  const subscription = await prisma.subscription.findFirst({
+    where: { userId },
     include: { plan: true },
   });
 
