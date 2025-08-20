@@ -1,5 +1,4 @@
 import status from "http-status";
-import { JwtPayload } from "jsonwebtoken";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { SubscriptionServices } from "./subscription.service";
@@ -7,9 +6,6 @@ import { SubscriptionServices } from "./subscription.service";
 const createSubscription = catchAsync(async (req, res) => {
   const { email } = req.user;
   const { planId } = req.body;
-
-
-  //console.log(`User email: ${email}`);
 
   const result = await SubscriptionServices.createSubscription(email, planId);
 
@@ -42,10 +38,9 @@ const getSingleSubscription = catchAsync(async (req, res) => {
 });
 
 const getMySubscription = catchAsync(async (req, res) => {
-  const { email } = req.user as JwtPayload;
-  console.log(`User email: ${email}`);
+  const userId = req.user.id;
 
-  const result = await SubscriptionServices.getMySubscription(email);
+  const result = await SubscriptionServices.getMySubscription(userId);
 
   sendResponse(res, {
     statusCode: status.OK,
@@ -54,31 +49,31 @@ const getMySubscription = catchAsync(async (req, res) => {
   });
 });
 
-const updateSubscription = catchAsync(async (req, res) => {
-  const { subscriptionId } = req.params;
+// const updateSubscription = catchAsync(async (req, res) => {
+//   const { subscriptionId } = req.params;
 
-  const result = await SubscriptionServices.updateSubscription(
-    subscriptionId,
-    req.body
-  );
-  sendResponse(res, {
-    statusCode: status.OK,
-    message: "Subscription updated successfully.",
-    data: result,
-  });
-});
+//   const result = await SubscriptionServices.updateSubscription(
+//     subscriptionId,
+//     req.body
+//   );
+//   sendResponse(res, {
+//     statusCode: status.OK,
+//     message: "Subscription updated successfully.",
+//     data: result,
+//   });
+// });
 
-const deleteSubscription = catchAsync(async (req, res) => {
-  const result = await SubscriptionServices.deleteSubscription(
-    req.params.subscriptionId
-  );
+// const deleteSubscription = catchAsync(async (req, res) => {
+//   const result = await SubscriptionServices.deleteSubscription(
+//     req.params.subscriptionId
+//   );
 
-  sendResponse(res, {
-    statusCode: status.OK,
-    message: "Subscription deleted successfully.",
-    data: result,
-  });
-});
+//   sendResponse(res, {
+//     statusCode: status.OK,
+//     message: "Subscription deleted successfully.",
+//     data: result,
+//   });
+// });
 
 const handleStripeWebhook = catchAsync(async (req, res) => {
   const result = await SubscriptionServices.HandleStripeWebhook(req.body);
@@ -96,6 +91,4 @@ export const SubscriptionController = {
   getMySubscription,
   handleStripeWebhook,
   getSingleSubscription,
-  updateSubscription,
-  deleteSubscription,
 };

@@ -8,92 +8,105 @@ import config from "../../config";
 import { createToken } from "../auth/auth.utils";
 import hashPassword from "../../helpers/hashPassword";
 import { passwordCompare } from "../../utils/comparePasswords";
-import { getLastCreatedUserId, getUserFromCache, setLastCreatedUserId, setUserToCache } from "./UserCache";
+import { sendOTPEmail } from "../../utils/sendOtp";
+import { generateOTP } from "../../utils/generateOTP";
+import { CLIENT_RENEG_LIMIT } from "tls";
 
-async function createUserIntoDB(payload: User) {
+const otpStore: { [key: string]: { otp: string; timestamp: number } } = {};
+
+// Helper to generate 6-digit OTP
+
+
+const createUserIntoDB = async (payload: any) => {
+  const { fullName, email, password, confirmPassword } = payload;
+
+  // 1️⃣ Check if email already exists
   const isUserExistByEmail = await prisma.user.findUnique({
-    where: { email: payload.email },
+    where: { email },
   });
 
   if (isUserExistByEmail) {
     throw new ApiError(
       status.BAD_REQUEST,
-      `User with this email: ${payload.email} already exists!`
+      `User with this email: ${email} already exists!`
     );
   }
 
-  const hashedPassword = await hashPassword(payload.password);
-
+  if (password !== confirmPassword) {
+    throw new ApiError(
+      status.BAD_REQUEST,
+      "Password and confirm password do not match!"
+    );
+  }
+  // 2️⃣ Hash password
+  const hashedPassword = await hashPassword(password);
+  
+  // 3️⃣ Create new user
   const userData = {
-    ...payload,
-    fullName: `${payload.firstName} ${payload.lastName}`,
+    fullaName: fullName,
+    email,
     password: hashedPassword,
-    isVerified: false,
   };
 
-  
-   const newUser = await prisma.user.create({ data: userData });
+  await prisma.user.create({ data: userData });
 
-  setUserToCache(newUser.id, newUser);
-  setLastCreatedUserId(newUser.id); 
+  // 4️⃣ Generate OTP
+  const otp = generateOTP();
 
+  // 5️⃣ Store OTP in memory (expires in 5 min)
+  otpStore[email] = {
+    otp,
+    timestamp: Date.now(),
+  };
+
+  // 6️⃣ Send OTP email (fail-safe)
+  try {
+    await sendOTPEmail(email, otp);
+  } catch (error) {
+    console.error("Failed to send OTP email:", error);
+    throw new ApiError(
+      status.INTERNAL_SERVER_ERROR,
+      "User created but failed to send OTP email. Please try again."
+    );
+  }
+
+  // 7️⃣ Return success message
   return {
-    message: "User created successfully!",
+    message:
+      "We have sent a confirmation email to your email address. Please check your inbox.",
   };
 }
 
-const updateRoleIntoDB = async (payload: Partial<User>) => {
-  const userId = getLastCreatedUserId();
-
-  if (!userId) {
-    throw new ApiError(status.BAD_REQUEST, "No user found in state");
+export const verifyOTP = async (email: string, otp: string) => {
+  if (!email || !otp) {
+    throw new ApiError(status.BAD_REQUEST, "Email and OTP are required.");
   }
 
-  const cachedUser = getUserFromCache(userId);
-
-  if (!cachedUser) {
-    throw new ApiError(status.NOT_FOUND, "User not found in cache");
+  const storedData = otpStore[email];
+  
+  if (!storedData) {
+    throw new ApiError(status.BAD_REQUEST, "No OTP found for this email.");
   }
 
-  if (payload.role === "ENGINEER" && !payload.teeRegistration) {
-    throw new ApiError(status.BAD_REQUEST, "TEE registration is required for Engineers");
+  // Check if OTP is expired (5 minutes validity)
+  if (Date.now() - storedData.timestamp > 5 * 60 * 1000) {
+    delete otpStore[email];
+    throw new ApiError(status.BAD_REQUEST, "OTP has expired.");
   }
 
-  if (payload.role === "COMPANY" && !payload.vatNumber) {
-    throw new ApiError(status.BAD_REQUEST, "VAT number is required for Companies");
+  if (storedData.otp !== otp) {
+    throw new ApiError(status.BAD_REQUEST, "Invalid OTP.");
   }
+
+  // Clear the OTP after successful verification
+  delete otpStore[email];
 
   await prisma.user.update({
-    where: { id: userId },
-    data: {
-      role: payload.role,
-      teeRegistration: payload.teeRegistration || "",
-      vatNumber: payload.vatNumber || "",
-    },
+    where: { email: email },
+    data: { isVerified: true },
   });
 
-    const jwtPayload = {
-    firstName: cachedUser.firstName,
-    lastName: cachedUser.lastName,
-    fullName: `${cachedUser.firstName} ${cachedUser.lastName}`,
-    email: cachedUser.email,
-    role: payload.role || cachedUser.role,
-    profilePic: cachedUser?.profilePic || "",
-    isVerified: false,
-  };
-
-    const accessToken = createToken(
-    jwtPayload,
-    config.jwt.access.secret as string,
-    config.jwt.resetPassword.expiresIn as string
-  );
-
-  const confirmedLink = `${config.verifyEmailLink}?token=${accessToken}`;
-  await sendEmail(cachedUser.email, undefined, confirmedLink);
-
-  return {
-    message: "We have sent a confirmation email to your email address. Please check your inbox.",
-  };
+  return { message: "OTP verified successfully" };
 };
 
 const getAllUserFromDB = async (query: Record<string, unknown>) => {
@@ -130,85 +143,6 @@ type UpdateUserPayload = Partial<User> & {
   confirmPassword?: string;
 };
 
-const updateUserIntoDB = async (userId: string, payload: UpdateUserPayload) => {
-  const isUserExist = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!isUserExist) {
-    throw new ApiError(status.NOT_FOUND, "User not found!");
-  }
-
-  if (!payload.password) {
-    throw new ApiError(status.BAD_REQUEST, "Current password is required to update user.");
-  }
-
-  console.log(payload.password);
-  console.log(payload.newPassword);
-  const isPasswordMatched = await passwordCompare(
-    payload.password,
-    isUserExist.password
-  );
-
-  if (!isPasswordMatched) {
-    throw new ApiError(status.BAD_REQUEST, "Current password is incorrect.");
-  }
-  console.log(payload.confirmPassword);
-  // Handle password change (optional)
-  if (payload.newPassword && payload.confirmPassword) {
-    if (!payload.password) {
-      throw new ApiError(status.BAD_REQUEST, "Current password is required to change password.");
-    }
-
-
-
-    if (payload.newPassword !== payload.confirmPassword) {
-      throw new ApiError(
-        status.BAD_REQUEST,
-        "New password and confirm password do not match."
-      );
-    }
-
-    payload.password = await hashPassword(payload.newPassword!);
-  } else {
-    payload.password = isUserExist.password; // Keep existing password if no change requested
-  }
-
-  // Handle profilePic fallback
-  if (!payload.profilePic) {
-    payload.profilePic = isUserExist.profilePic;
-  }
-
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: {
-      firstName: payload.firstName,
-      lastName: payload.lastName,
-      email: payload.email,
-      role: payload.role,
-      teeRegistration: payload.teeRegistration || "",
-      vatNumber: payload.vatNumber || "",
-      password: payload.password,
-      profilePic: payload.profilePic || "",
-      phone: payload.phone || "",
-    },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      profilePic: true,
-      role: true,
-      isVerified: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-
-  return updatedUser;
-};
-
-
 const getSingleUserByIdFromDB = async (userId: string) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -223,65 +157,60 @@ const getSingleUserByIdFromDB = async (userId: string) => {
   return rest;
 };
 
-const deleteUserFromDB = async (userId: string) => {
-  const isUserExist = await prisma.user.findUnique({
+const updateUser = async (userId: string, payload: UpdateUserPayload) => {
+  const user = await prisma.user.findUnique({
     where: { id: userId },
   });
 
-  if (!isUserExist) {
+  if (!user) {
     throw new ApiError(status.NOT_FOUND, "User not found!");
   }
 
-  await prisma.subscription.deleteMany({
-    where: { userId: userId },
-  });
+  // If new password is provided, hash it
+  if (payload.newPassword) {
+    payload.password = await hashPassword(payload.newPassword);
+  }
 
-  await prisma.billingInfo.deleteMany({
-    where: { userId: userId },
-  });
-
-  await prisma.service.deleteMany({
-    where: { createdById: userId },
-  });
-
-  await prisma.user.delete({
+  const updatedUser = await prisma.user.update({
     where: { id: userId },
+    data: { 
+      gender: payload.gender,
+      age: payload.age,
+      height: payload.height,
+      weight: payload.weight,
+      level: payload.level,
+     },
   });
 
-  return null;
+  return updatedUser;
 };
 
+const deleteUser = async (id: string) => {
 
-
-
-export const suspendUserAccount = async (userId: string): Promise<User> => {
+  //console.log("Deleting user with ID:", id);
+  // Check if user exists
   const existingUser = await prisma.user.findUnique({
-    where: { id: userId },
+    where: { id },
   });
 
   if (!existingUser) {
     throw new ApiError(status.NOT_FOUND, "User not found");
   }
 
-  if (existingUser.status === "INACTIVE") {
-    throw new ApiError(status.BAD_REQUEST, "User account is already suspended");
-  }
-
-  const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: { status: "INACTIVE" },
+  // Delete user
+  const deletedUser = await prisma.user.delete({
+    where: { id },
   });
 
-  return updatedUser;
+  return deletedUser;
 };
-
 
 export const UserService = {
   createUserIntoDB,
   getAllUserFromDB,
-  updateUserIntoDB,
-  deleteUserFromDB,
   getSingleUserByIdFromDB,
-  updateRoleIntoDB,
-  suspendUserAccount
+  updateUser,
+  verifyOTP,
+  deleteUser,
 };
+

@@ -7,7 +7,6 @@ import { AuthValidation } from "./auth.validation";
 
 const router = Router();
 
-router.get("/verify-email", AuthController.verifyEmail);
 
 router.post(
   "/login",
@@ -17,7 +16,7 @@ router.post(
 
 router.put(
   "/change-password",
-  auth(UserRole.USER, UserRole.ADMIN),
+  auth(UserRole.USER, UserRole.SUPER_ADMIN),
   validateRequest(AuthValidation.changePasswordValidationSchema),
   AuthController.changePassword
 );
@@ -29,20 +28,15 @@ router.post(
 );
 
 router.post("/reset-password", AuthController.resetPassword);
+router.post("/verify-otp", AuthController.verifyOTP);
+
 
 router.post(
-  "/resend-verification-link",
-  validateRequest(AuthValidation.resendConfirmationLinkValidationSchema),
-  AuthController.resendVerificationLink
+  "/resend-otp",
+  validateRequest(AuthValidation.resendOtpValidationSchema),
+  AuthController.resendOtp
 );
 
-router.post(
-  "/resend-reset-pass-link",
-  validateRequest(AuthValidation.resendConfirmationLinkValidationSchema),
-  AuthController.resendResetPassLink
-);
-
-router.get("/me", auth(), AuthController.getMe);
 
 router.post("/refresh-token", AuthController.refreshToken);
 

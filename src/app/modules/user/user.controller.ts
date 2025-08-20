@@ -18,18 +18,16 @@ const createUser = catchAsync(async (req, res) => {
   });
 });
 
+const verifyOTP = catchAsync(async (req, res) => {
+  const { email, otp } = req.body;
 
-
-export const updateRole = catchAsync(async (req, res) => {
-  const result = await UserService.updateRoleIntoDB(req.body);
+  const result = await UserService.verifyOTP(email, otp);
 
   sendResponse(res, {
     statusCode: status.OK,
     message: result.message,
   });
 });
-
-
 
 const getAllUser = catchAsync(async (req, res) => {
   const result = await UserService.getAllUserFromDB(req.query);
@@ -41,27 +39,6 @@ const getAllUser = catchAsync(async (req, res) => {
     message: "Users are retrieved successfully!",
     meta: result.meta,
     data: result.data,
-  });
-});
-
-
-
-
-const updateUser = catchAsync(async (req, res) => {
-  const userId = req.user.id;
-
-  if (req.file) {
-    req.body.profilePic = `${config.imageUrl}/uploads/${req.file.filename}`;
-  }
-  
-  console.log(userId);
-
-  const result = await UserService.updateUserIntoDB(userId, req.body);
-
-  sendResponse(res, {
-    statusCode: status.OK,
-    message: "User updated successfully!",
-    data: result,
   });
 });
 
@@ -77,35 +54,52 @@ const getSingleUserById = catchAsync(async (req, res) => {
   });
 });
 
-const deleteUser = catchAsync(async (req, res) => {
-  const { userId } = req.params;
+const updateUser = catchAsync(async (req, res) => {
+  const  userId  = req.user?.id;
+  const { gender, age, height, weight, level } = req.body;
 
-  await UserService.deleteUserFromDB(userId);
+  console.log(userId)
 
-  sendResponse(res, {
-    statusCode: status.OK,
-    message: "User deleted successfully!",
+  const result = await UserService.updateUser(userId, {
+    gender,
+    age,
+    height,
+    weight,
+    level,
   });
-});
-
-export const suspendUser = catchAsync(async (req, res) => {
-  const { id } = req.params;
-
-  const result = await UserService.suspendUserAccount(id);
 
   sendResponse(res, {
     statusCode: status.OK,
-    message: "User account suspended successfully",
+    message: "User updated successfully!",
     data: result,
   });
 });
 
+const deleteUser = catchAsync(async (req, res) => {
+  const  userId  = req.params.id;
+
+ // console.log("Deleting user with ID:", userId);
+
+  if (!userId) {
+    throw new ApiError(status.BAD_REQUEST, "User ID is required");
+  }
+
+  const result = await UserService.deleteUser(userId);
+
+  sendResponse(res, {
+    statusCode: status.OK,
+    message: "User deleted successfully!",
+    data: result,
+  });
+});
+
+
+
 export const UserController = {
   createUser,
   getAllUser,
-  updateUser,
-  deleteUser,
   getSingleUserById,
-  updateRole,
-  suspendUser,
+  updateUser,
+  verifyOTP,
+  deleteUser,
 };

@@ -1,44 +1,26 @@
+import { PaymentStatus } from '@prisma/client';
 import status from "http-status";
 import ApiError from "../errors/ApiError";
 import prisma from "./prisma";
-import { PaymentStatus, Interval } from "@prisma/client";
 import Stripe from "stripe";
 
 // Helper function to calculate end date based on plan interval
-const calculateEndDate = (
-  startDate: Date
-): Date => {
+const calculateEndDate = (startDate: Date, phase: number): Date => {
   const endDate = new Date(startDate);
 
-  endDate.setMonth(endDate.getMonth() + 1);
-      // Handle month overflow (e.g., Jan 31 + 1 month)
-      if (endDate.getDate() !== startDate.getDate()) {
-        endDate.setDate(0); // Set to last day of previous month
-      }
-
-  // switch (interval) {
-  //   case "day":
-  //     endDate.setDate(endDate.getDate() + intervalCount);
-  //     break;
-  //   case "week":
-  //     endDate.setDate(endDate.getDate() + 7 * intervalCount);
-  //     break;
-  //   case "month":
-  //     endDate.setMonth(endDate.getMonth() + intervalCount);
-  //     // Handle month overflow (e.g., Jan 31 + 1 month)
-  //     if (endDate.getDate() !== startDate.getDate()) {
-  //       endDate.setDate(0); // Set to last day of previous month
-  //     }
-  //     break;
-  //   case "year":
-  //     endDate.setFullYear(endDate.getFullYear() + intervalCount);
-  //     break;
-  //   default:
-  //     throw new ApiError(
-  //       status.BAD_REQUEST,
-  //       `Unsupported interval: ${interval}`
-  //     );
-  // }
+  switch (phase) {
+    case 1:
+      endDate.setDate(endDate.getDate() + 30); // Phase 1 = 30 days
+      break;
+    case 2:
+      endDate.setDate(endDate.getDate() + 60); // Phase 2 = 60 days total
+      break;
+    case 3:
+      endDate.setDate(endDate.getDate() + 90); // Phase 3 = 90 days total
+      break;
+    default:
+      throw new ApiError(status.BAD_REQUEST, `Unsupported phase: ${phase}`);
+  }
 
   return endDate;
 };
@@ -77,7 +59,7 @@ const handlePaymentIntentSucceeded = async (
 
   const startDate = new Date();
   const endDate = calculateEndDate(
-    startDate
+    startDate, payment.plan.allowedPhases ?? 1
   );
 
   // Execute both updates in a transaction
@@ -121,6 +103,7 @@ const handlePaymentIntentFailed = async (
     data: {
       paymentStatus: PaymentStatus.CANCELED,
       endDate: new Date(),
+      stripePaymentId: paymentIntent.id,
     },
   });
 };

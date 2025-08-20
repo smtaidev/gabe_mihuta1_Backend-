@@ -8,7 +8,10 @@ import { passwordCompare } from "../../utils/comparePasswords";
 import { verifyToken } from "../../utils/verifyToken";
 import { sendEmail } from "../../utils/sendEmail";
 import hashPassword from "../../helpers/hashPassword";
+import { sendOTPEmail } from "../../utils/sendOtp";
+import { generateOTP } from "../../utils/generateOTP";
 
+const otpStore: { [key: string]: { otp: string; timestamp: number } } = {};
 const loginUser = async (email: string, password: string) => {
   const user = await prisma.user.findUnique({
     where: { email },
@@ -26,35 +29,11 @@ const loginUser = async (email: string, password: string) => {
 
   const jwtPayload = {
     id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.fullName!,
+    fullName: user.fullaName,
     email: user.email,
     profilePic: user.profilePic,
     role: user.role,
-    isVerified: user.isVerified,
   };
-
-  const isSuperAdmin = user.role === "SUPER_ADMIN";
-
-  if (!user.isVerified && !isSuperAdmin) {
-    const accessToken = createToken(
-      jwtPayload,
-      config.jwt.access.secret as string,
-      config.jwt.resetPassword.expiresIn as string
-    );
-
-    const confirmedLink = `${config.verifyEmailLink}?token=${accessToken}`;
-
-    await sendEmail(user.email, undefined, confirmedLink);
-
-    throw new ApiError(
-      status.UNAUTHORIZED,
-      "User is not verified! We have sent a confirmation email to your email address. Please check your inbox."
-    );
-  }
-
-
   const accessToken = createToken(
     jwtPayload,
     config.jwt.access.secret as string,
@@ -73,43 +52,6 @@ const loginUser = async (email: string, password: string) => {
   };
 };
 
-const verifyEmail = async (token: string) => {
-  const verifiedToken = verifyToken(token);
-
-  const user = await prisma.user.findUnique({
-    where: { email: verifiedToken.email },
-  });
-
-  if (!user) {
-    throw new ApiError(status.NOT_FOUND, "User not found!");
-  }
-
-  if (!user.isResetPassword && user.isVerified) {
-    throw new ApiError(status.BAD_REQUEST, "User already verified!");
-  }
-
-  let resetPass = false;
-
-  if (user.isResetPassword) {
-    await prisma.user.update({
-      where: { email: verifiedToken.email },
-      data: { isResetPassword: false, canResetPassword: true },
-    });
-
-    resetPass = true;
-  }
-
-  await prisma.user.update({
-    where: { email: verifiedToken.email },
-    data: { isVerified: true },
-  });
-
-  return {
-    message: resetPass
-      ? "Your Reset Password link verified successfully! Please reset your password."
-      : "Your Account verified successfully!",
-  };
-};
 
 const changePassword = async (
   email: string,
@@ -161,50 +103,30 @@ const changePassword = async (
 
 const forgotPassword = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new ApiError(status.NOT_FOUND, "User not found!");
 
-  if (!user) {
-    throw new ApiError(status.NOT_FOUND, "User not found!");
-  }
-
-  if (!user.isVerified) {
+   if (!user.isVerified) {
     throw new ApiError(status.UNAUTHORIZED, "User account is not verified!");
   }
 
-  // Step 2: Save OTP in DB
   await prisma.user.update({
     where: { email },
-    data: {
-      isResetPassword: true,
-      canResetPassword: false,
-    },
+    data: { isResetPassword: true, canResetPassword: false },
   });
 
-  const jwtPayload = {
-    id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.fullName!,
-    email: user.email,
-    profilePic: user.profilePic,
-    role: user.role,
-    isVerified: user.isVerified,
-  };
+  const otp = generateOTP();
+  otpStore[email] = { otp, timestamp: Date.now() };
 
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt.access.secret as string,
-    config.jwt.access.expiresIn as string
-  );
+  try {
+    await sendOTPEmail(email, otp);
+  } catch (error) {
+    throw new ApiError(
+      status.INTERNAL_SERVER_ERROR,
+      "OTP sending failed. Please try again."
+    );
+  }
 
-  const resetPassLink = `${config.verifyEmailLink}?token=${accessToken}`;
-
-  await sendEmail(user.email, resetPassLink);
-
-  // Step 4: Return response
-  return {
-    message:
-      "We have sent a Reset Password link to your email address. Please check your inbox.",
-  };
+  return { message: "OTP sent to your email." };
 };
 
 const resetPassword = async (
@@ -212,29 +134,19 @@ const resetPassword = async (
   newPassword: string,
   confirmPassword: string
 ) => {
-  if (newPassword !== confirmPassword) {
+  if (newPassword !== confirmPassword)
     throw new ApiError(status.BAD_REQUEST, "Passwords do not match!");
-  }
 
-  const user = await prisma.user.findUnique({
-    where: { email: email },
-  });
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new ApiError(status.NOT_FOUND, "User not found!");
 
-  if (!user) {
-    throw new ApiError(status.NOT_FOUND, "User not found!");
-  }
-
-  if (!user.canResetPassword) {
-    throw new ApiError(
-      status.BAD_REQUEST,
-      "User is not eligible for password reset!"
-    );
-  }
+  if (!user.canResetPassword)
+    throw new ApiError(status.BAD_REQUEST, "OTP not verified or expired.");
 
   const hashedPassword = await hashPassword(newPassword);
 
   await prisma.user.update({
-    where: { email: email },
+    where: { email },
     data: {
       password: hashedPassword,
       isResetPassword: false,
@@ -242,103 +154,47 @@ const resetPassword = async (
     },
   });
 
-  return {
-    message: "Password reset successfully!",
-  };
+  return { message: "Password reset successfully!" };
 };
 
-const resendVerificationLink = async (email: string) => {
+const resendOtp = async (email: string) => {
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
     throw new ApiError(status.NOT_FOUND, "User not found!");
   }
 
-  if (user.isVerified) {
-    throw new ApiError(status.BAD_REQUEST, "User account already verified!");
-  }
-
-  const jwtPayload = {
-    id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.fullName!,
-    email: user.email,
-    profilePic: user.profilePic,
-    role: user.role,
-    isVerified: user.isVerified,
-  };
-
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt.access.secret as string,
-    config.jwt.access.expiresIn as string
-  );
-
-  const confirmedLink = `${config.verifyEmailLink}?token=${accessToken}`;
-
-  await sendEmail(user.email, undefined, confirmedLink);
-
-  return {
-    message:
-      "New verification link has been sent to your email. Please check your inbox.",
-  };
-};
-
-const resendResetPassLink = async (email: string) => {
-  const user = await prisma.user.findUnique({ where: { email } });
-
-  if (!user) {
-    throw new ApiError(status.NOT_FOUND, "User not found!");
-  }
-
-  const jwtPayload = {
-    id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.fullName!,
-    email: user.email,
-    profilePic: user.profilePic,
-    role: user.role,
-    isVerified: user.isVerified,
-  };
+  // Generate new OTP
+  const otp = generateOTP();
+  const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   await prisma.user.update({
-    where: { email: user.email },
+    where: { email },
     data: {
+      isResentOtp: true,
       isResetPassword: true,
+      canResetPassword: false,
     },
   });
 
-  const accessToken = createToken(
-    jwtPayload,
-    config.jwt.access.secret as string,
-    config.jwt.access.expiresIn as string
-  );
-
-  const resetPassLink = `${config.verifyEmailLink}?token=${accessToken}`;
-
-  await sendEmail(user.email, resetPassLink);
+  await sendEmail(email, otp);
 
   return {
-    message:
-      "New Reset Password link has been sent to your email. Please check your inbox.",
+    message: "New OTP has been sent to your email for reset password.",
   };
 };
+
+
 
 const getMe = async (email: string) => {
   const result = await prisma.user.findUnique({
     where: { email },
     select: {
       id: true,
-      firstName: true,
-      lastName: true,
-      fullName: true,
+      fullaName: true,
       email: true,
       profilePic: true,
       role: true,
-      isVerified: true,
-      isSubscribed: true,
     },
   });
 
@@ -357,12 +213,10 @@ export const refreshToken = async (token: string) => {
     where: { email },
     select: {
       id: true,
-      firstName: true,
-      lastName: true,
+      fullaName: true,
       email: true,
       role: true,
       profilePic: true,
-      isVerified: true,
       passwordChangedAt: true,
     },
   });
@@ -385,12 +239,10 @@ export const refreshToken = async (token: string) => {
 
   const jwtPayload = {
     id: user.id,
-    firstName: user.firstName,
-    lastName: user.lastName,
+    fullName: user.fullaName,
     email: user.email,
     role: user.role,
     profilePic: user?.profilePic,
-    isVerified: user.isVerified,
   };
 
   const accessToken = createToken(
@@ -402,14 +254,44 @@ export const refreshToken = async (token: string) => {
   return { accessToken };
 };
 
+const verifyOTP = async (email: string, otp: string) => {
+  if (!email || !otp)
+    throw new ApiError(status.BAD_REQUEST, "Email and OTP are required.");
+
+  const storedData = otpStore[email];
+  if (!storedData) throw new ApiError(status.BAD_REQUEST, "No OTP found.");
+
+  if (Date.now() - storedData.timestamp > 5 * 60 * 1000) {
+    delete otpStore[email];
+    throw new ApiError(status.BAD_REQUEST, "OTP expired.");
+  }
+
+  if (storedData.otp !== otp)
+    throw new ApiError(status.BAD_REQUEST, "Invalid OTP.");
+
+  delete otpStore[email];
+
+  await prisma.user.update({
+    where: { email },
+    data: {
+      isVerified: true,
+      canResetPassword: true, // ✅ Allow password reset
+    },
+  });
+
+  return { message: "OTP verified successfully. You may now reset your password." };
+};
+
+
+
+
 export const AuthService = {
   getMe,
   loginUser,
-  verifyEmail,
   refreshToken,
   resetPassword,
   changePassword,
   forgotPassword,
-  resendResetPassLink,
-  resendVerificationLink,
+  verifyOTP,
+  resendOtp,
 };

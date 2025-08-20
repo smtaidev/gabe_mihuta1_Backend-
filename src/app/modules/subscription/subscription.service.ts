@@ -1,14 +1,14 @@
+import { Subscription } from './../../../../node_modules/.prisma/client/index.d';
+import {
+  handlePaymentIntentFailed,
+  handlePaymentIntentSucceeded,
+} from "../../utils/webhook";
 import Stripe from "stripe";
 import status from "http-status";
 import prisma from "../../utils/prisma";
 import { stripe } from "../../utils/stripe";
 import ApiError from "../../errors/ApiError";
-import { Subscription } from "@prisma/client";
 import QueryBuilder from "../../builder/QueryBuilder";
-import {
-  handlePaymentIntentFailed,
-  handlePaymentIntentSucceeded,
-} from "../../utils/webhook";
 
 const createSubscription = async (email: string, planId: string) => {
   return await prisma.$transaction(async (tx) => {
@@ -17,7 +17,6 @@ const createSubscription = async (email: string, planId: string) => {
       where: { email },
     });
 
-    //console.log(user);
     if (!user) {
       throw new ApiError(status.NOT_FOUND, "User not found");
     }
@@ -26,58 +25,20 @@ const createSubscription = async (email: string, planId: string) => {
     const plan = await tx.plan.findUnique({
       where: { id: planId },
     });
-
     if (!plan) {
       throw new ApiError(status.NOT_FOUND, "Plan not found");
     }
 
-    if (plan.amount === 0) {
-      // For free plan, directly set the payment status to "COMPLETED"
-      const startDate = new Date();
-      
-      // Handle existing subscription for free plan
-      const existingSubscription = await tx.subscription.findUnique({
-        where: { userId: user.id },
-      });
+    // 3. Calculate end date based on plan interval
+    const startDate = new Date();
+    let endDate: Date | null = null;
 
-      let subscription;
-      if (existingSubscription?.paymentStatus === "PENDING") {
-        // Update existing subscription for free plan
-        subscription = await tx.subscription.update({
-          where: { userId: user.id },
-          data: {
-            planId,
-            startDate,
-            amount: 0, // Free plan amount
-            stripePaymentId: "free-plan", // Dummy payment ID for free plan
-            paymentStatus: "COMPLETED", // Mark as completed for free plan
-          },
-        });
-      } else {
-        // Create new free subscription
-        subscription = await tx.subscription.create({
-          data: {
-            userId: user.id,
-            planId,
-            startDate,
-            amount: 0, // Free plan amount
-            stripePaymentId: "free-plan", // Dummy payment ID for free plan
-            paymentStatus: "COMPLETED", // Mark as completed for free plan
-          },
-        });
-      }
+   
 
-      return {
-        subscription,
-        clientSecret: null, // No Stripe client secret for free plan
-        paymentIntentId: null, // No Stripe payment intent ID for free plan
-      };
-    }
-
-    // 4. Create payment intent in Stripe for paid plans
+    // 4. Create payment intent in Stripe
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(plan.amount * 100),
-      currency: plan.currency ? plan.currency.toLowerCase() : "usd",
+      currency: (plan.currency ?? "eur").toLowerCase(),
       metadata: {
         userId: user.id,
         planId,
@@ -87,12 +48,10 @@ const createSubscription = async (email: string, planId: string) => {
       },
     });
 
-    // 5. Handle existing subscription for paid plan
-    const existingSubscription = await tx.subscription.findUnique({
+    // 5. Handle existing subscription
+    const existingSubscription = await tx.subscription.findFirst({
       where: { userId: user.id },
     });
-
-    const startDate = new Date();
 
     let subscription;
     if (existingSubscription?.paymentStatus === "PENDING") {
@@ -103,11 +62,12 @@ const createSubscription = async (email: string, planId: string) => {
           stripePaymentId: paymentIntent.id,
           startDate,
           amount: plan.amount,
+          endDate: existingSubscription.endDate || endDate,
           paymentStatus: "PENDING",
         },
       });
     } else {
-      // 6. Create new subscription with calculated endDate for paid plan
+      // 6. Create new subscription with calculated endDate
       subscription = await tx.subscription.create({
         data: {
           userId: user.id,
@@ -116,6 +76,7 @@ const createSubscription = async (email: string, planId: string) => {
           amount: plan.amount,
           stripePaymentId: paymentIntent.id,
           paymentStatus: "PENDING",
+          endDate, // Now includes the calculated endDate
         },
       });
     }
@@ -129,8 +90,7 @@ const createSubscription = async (email: string, planId: string) => {
 };
 
 
-
-const getAllSubscription = async (query: Record<string, unknown>) => {
+const getAllSubscription = async (query: Record<string, any>) => {
   const queryBuilder = new QueryBuilder(prisma.subscription, query);
   const subscription = await queryBuilder
     .search([""])
@@ -140,11 +100,9 @@ const getAllSubscription = async (query: Record<string, unknown>) => {
       user: {
         select: {
           id: true,
-          fullName: true,
           email: true,
           profilePic: true,
           role: true,
-          isSubscribed: true,
         },
       },
       plan: true,
@@ -162,11 +120,9 @@ const getSingleSubscription = async (subscriptionId: string) => {
       user: {
         select: {
           id: true,
-          fullName: true,
           profilePic: true,
           email: true,
           role: true,
-          isSubscribed: true,
         },
       },
       plan: true,
@@ -180,9 +136,9 @@ const getSingleSubscription = async (subscriptionId: string) => {
   return result;
 };
 
-const getMySubscription = async (email: string) => {
+const getMySubscription = async (userId: string) => {
   const user = await prisma.user.findUnique({
-    where: { email },
+    where: { id: userId },
   });
 
   if (!user) {
@@ -190,16 +146,14 @@ const getMySubscription = async (email: string) => {
   }
 
   const result = await prisma.subscription.findFirst({
-    where: { user: { email } },
+    where: { user: { id: userId } },
     include: {
       user: {
         select: {
           id: true,
-          fullName: true,
           profilePic: true,
           email: true,
           role: true,
-          isSubscribed: true,
         },
       },
       plan: true,
@@ -211,37 +165,6 @@ const getMySubscription = async (email: string) => {
   }
 
   return result;
-};
-
-const updateSubscription = async (
-  subscriptionId: string,
-  data: Subscription
-) => {
-  const subscription = await prisma.subscription.findUnique({
-    where: { id: subscriptionId },
-  });
-
-  if (!subscription) {
-    throw new ApiError(status.NOT_FOUND, "Subscription not found");
-  }
-
-  const result = await prisma.subscription.update({
-    where: { id: subscriptionId },
-    data,
-  });
-  return result;
-};
-
-const deleteSubscription = async (subscriptionId: string) => {
-  const subscription = await prisma.subscription.findUnique({
-    where: { id: subscriptionId },
-  });
-
-  if (!subscription) {
-    throw new ApiError(status.NOT_FOUND, "Subscription not found");
-  }
-
-  return null;
 };
 
 const HandleStripeWebhook = async (event: Stripe.Event) => {
@@ -269,8 +192,6 @@ export const SubscriptionServices = {
   getMySubscription,
   createSubscription,
   getAllSubscription,
-  updateSubscription,
-  deleteSubscription,
   HandleStripeWebhook,
   getSingleSubscription,
 };

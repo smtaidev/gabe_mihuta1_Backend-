@@ -3,13 +3,10 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 
 export type IJwtPayload = {
   id?: string;
-  firstName: string;
-  lastName: string;
-  fullName?: string;
+  fullName: string;
   email: string;
   profilePic?: string | null;
   role: UserRole;
-  isVerified: boolean;
 };
 
 export const createToken = (

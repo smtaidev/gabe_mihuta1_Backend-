@@ -1,62 +1,41 @@
-import status from "http-status";
+import { Plan } from "@prisma/client";
 import prisma from "../../utils/prisma";
 import { stripe } from "../../utils/stripe";
 import ApiError from "../../errors/ApiError";
-import { Interval, Plan } from "@prisma/client";
 
 const createPlan = async (payload: Plan) => {
   const result = await prisma.$transaction(async (tx) => {
+    // 1️⃣ Create Product in Stripe
     const product = await stripe.products.create({
       name: payload.planName,
-      description: payload.description!,
+      description: payload.description || "",
       active: true,
     });
 
-    if (payload.interval && !payload.intervalCount) {
-      throw new ApiError(status.BAD_REQUEST, "Interval count is required when interval is specified.");
-    }
-
-    if (payload.intervalCount && !payload.interval) {
-      throw new ApiError(status.BAD_REQUEST, "Interval is required when interval count is specified.");
-    }
-
-    let price: any = {};
-
-    if (payload.interval && payload.intervalCount) {
-      const recurringData: any = {
-        interval: payload.interval,
-        interval_count: payload.intervalCount,
-      };
-
-       price = await stripe.prices.create({
-        currency: "usd",
+    let priceId: string | null = null;
+    if (payload.amount > 0) {
+      // Paid plan → create Stripe price
+      const price = await stripe.prices.create({
+        currency: payload.currency || "eur",
         unit_amount: Math.round(payload.amount * 100),
-        active: true,
-        recurring: recurringData,
         product: product.id,
-      });
-    }else {
-      price = await stripe.prices.create({
-        currency: "usd",
-        unit_amount: Math.round(payload.amount * 100),
         active: true,
-        product: product.id,
       });
+
+      priceId = price.id; 
     }
 
-
-
+    // Prisma create
     const dbPlan = await tx.plan.create({
       data: {
-        amount: payload.amount || 0,
         planName: payload.planName,
-        currency: "usd",
-        interval: payload?.interval,
-        intervalCount: payload?.intervalCount,
+        amount: payload.amount,
+        currency: payload.currency || "eur",
         productId: product.id,
-        priceId: price.id,
+        priceId: priceId,           
+        active: payload.active ?? true,
         description: payload.description,
-        features: payload.features,
+        allowedPhases: payload.allowedPhases ?? 0, 
       },
     });
 
@@ -66,6 +45,59 @@ const createPlan = async (payload: Plan) => {
   return result;
 };
 
+
+
+
+const getAllPlans = async () => {
+  const plans = await prisma.plan.findMany();
+  return plans;
+};
+
+// Get a Single Plan by ID
+const getPlanById = async (planId: string) => {
+  const plan = await prisma.plan.findUnique({
+    where: { id: planId },
+  });
+
+  return plan;
+};
+
+// // Delete Plan
+// const deletePlan = async (planId: string) => {
+//   return await prisma.$transaction(async (tx) => {
+//     // Step 1: Find the plan record in the database
+//     const plan = await tx.plan.findUnique({
+//       where: { id: planId },
+//     });
+
+//     if (!plan) {
+//       throw new Error(`Plan with ID ${planId} not found`);
+//     }
+
+//     // Step 2: Deactivate the price in Stripe
+//     await stripe.prices.update(plan.priceId, {
+//       active: false,
+//     });
+
+//     // Step 3: Deactivate the product in Stripe
+//     await stripe.products.update(plan.productId, {
+//       active: false,
+//     });
+
+//     // Step 4: Delete the plan record in the database
+//     await tx.plan.delete({
+//       where: { id: planId },
+//     });
+
+//     return {
+//       message: `Plan with ID ${planId} archived and deleted successfully`,
+//     };
+//   });
+// };
+
 export const PlanServices = {
   createPlan,
+  getAllPlans,
+  getPlanById,
+//  deletePlan,
 };

@@ -1,10 +1,10 @@
+import { Subscription } from './../../../node_modules/.prisma/client/index.d';
 import { Router } from "express";
 import { AuthRoutes } from "../modules/auth/auth.route";
-import { PlanRoutes } from "../modules/plan/plan.route";
 import { UserRoutes } from "../modules/user/user.routes";
-import { ServiceRoutes } from "../modules/service/service.route";
-import { ProjectRoute } from "../modules/Project/project.route";
-import { SubscriptionRoutes } from "../modules/subscription/subscription.route";
+import { PhaseRoutes } from "../modules/phase/phase.route";
+import { PlanRoutes } from "../modules/plan/plan.route";
+import { SubscriptionRoutes } from '../modules/subscription/subscription.route';
 
 const router = Router();
 
@@ -18,8 +18,8 @@ const moduleRoutes = [
     route: UserRoutes,
   },
   {
-    path: "/services",
-    route: ServiceRoutes,
+    path: "/phase",
+    route: PhaseRoutes,
   },
   {
     path: "/plans",
@@ -28,11 +28,8 @@ const moduleRoutes = [
   {
     path: "/subscriptions",
     route: SubscriptionRoutes,
-  },
-  {
-    path: "/projects",
-    route: ProjectRoute,
-  },
+  }
+
 ];
 
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
