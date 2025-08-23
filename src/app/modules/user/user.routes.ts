@@ -22,7 +22,7 @@ router.post(
 
 router.post("/verify-otp", UserController.verifyOTP);
 
-router.put("/update-user", auth(UserRole.USER), UserController.updateUser);
+router.put("/update-user", UserController.updateUser);
 
 router.delete(
   "/delete-user/:id",
