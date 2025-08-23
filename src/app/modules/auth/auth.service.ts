@@ -178,7 +178,7 @@ const resendOtp = async (email: string) => {
 
   otpStore[email] = { otp, timestamp: Date.now() };
 
-  await sendEmail(email, otp);
+  await sendOTPEmail(email, otp);
 
   return {
     message: "New OTP has been sent to your email for reset password.",
