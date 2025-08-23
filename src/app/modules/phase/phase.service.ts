@@ -47,14 +47,36 @@ const fetchAndSaveAIWorkoutPlan = async (
 
     if (!data?.workout_plan) throw new Error("Invalid AI response");
 
-    // 2️⃣ Delete old workouts for this phase
-    await prisma.workoutPlanDay.deleteMany({
-      where: { userId, phase },
+
+   if (phase === 1) {
+      await prisma.mission.create({
+        data: {
+          mission: requestBody.mission,
+          timeCommitment: requestBody.time_commitment,
+          gearCheck: requestBody.gear,
+          squad: requestBody.squad,
+          user: { connect: { id: userId } },
+        },
+      });
+    }
+
+    // Delete old phase if exists
+    //await prisma.workoutPlanDay.deleteMany({ where: { userId, phase: phase-1 } });
+
+    // ✅ Find last scheduled day for this user
+    const lastDay = await prisma.workoutPlanDay.findFirst({
+      where: { userId },
+      orderBy: { scheduledDate: "desc" },
     });
 
-    // 3️⃣ Save into DB
-    const savedDays: Prisma.WorkoutPlanDayGetPayload<{}>[] = [];
-    const startDate = new Date();
+    // ✅ Start next phase 1 day after lastDay, or today if first phase
+    let startDate = new Date();
+    if (lastDay) {
+      startDate = new Date(lastDay.scheduledDate);
+      startDate.setDate(startDate.getDate() + 1);
+    }
+
+    const savedDays = [];
 
     for (let i = 0; i < data.workout_plan.length; i++) {
       const day = data.workout_plan[i];
