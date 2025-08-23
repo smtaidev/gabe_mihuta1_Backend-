@@ -5,7 +5,7 @@ import { workoutPlanService } from "./phase.service";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import ApiError from "../../errors/ApiError";
-  import prisma from "../../utils/prisma";
+import prisma from "../../utils/prisma";
 
 const fetchAIPlanController = catchAsync(async (req, res) => {
   const user = req.user;

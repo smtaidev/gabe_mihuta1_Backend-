@@ -1,6 +1,9 @@
 import axios from "axios";
 import prisma from "../../utils/prisma";
 
+import { Prisma } from "@prisma/client";
+
+// AI API response shape
 interface AIWorkoutDay {
   day: number;
   name: string | null;
@@ -20,13 +23,11 @@ interface FetchAIWorkoutPlanRequest {
   squad: string;
 }
 
-// Map phases to AI API URLs
 const PHASE_APIS: Record<number, string> = {
   1: process.env.AI_API_PHASE_1!,
   2: process.env.AI_API_PHASE_2!,
   3: process.env.AI_API_PHASE_3!,
 };
-
 
 const fetchAndSaveAIWorkoutPlan = async (
   phase: number,
@@ -34,50 +35,29 @@ const fetchAndSaveAIWorkoutPlan = async (
   userId: string
 ) => {
   const aiApiUrl = PHASE_APIS[phase];
+  if (!aiApiUrl) return []; // No API, skip
 
   try {
+    // 1️⃣ Fetch from AI API
     const { data } = await axios.post<{ workout_plan: AIWorkoutDay[] }>(
       aiApiUrl,
       requestBody,
-      {
-        headers: { "Content-Type": "application/json" },
-      }
+      { headers: { "Content-Type": "application/json" } }
     );
 
     if (!data?.workout_plan) throw new Error("Invalid AI response");
 
-    if (phase === 1) {
-      await prisma.mission.create({
-        data: {
-          mission: requestBody.mission,
-          timeCommitment: requestBody.time_commitment,
-          gearCheck: requestBody.gear,
-          squad: requestBody.squad,
-          user: { connect: { id: userId } },
-        },
-      });
-    }
-
-    // Delete old phase if exists
-    //await prisma.workoutPlanDay.deleteMany({ where: { userId, phase: phase-1 } });
-
-    // ✅ Find last scheduled day for this user
-    const lastDay = await prisma.workoutPlanDay.findFirst({
-      where: { userId },
-      orderBy: { scheduledDate: "desc" },
+    // 2️⃣ Delete old workouts for this phase
+    await prisma.workoutPlanDay.deleteMany({
+      where: { userId, phase },
     });
 
-    // ✅ Start next phase 1 day after lastDay, or today if first phase
-    let startDate = new Date();
-    if (lastDay) {
-      startDate = new Date(lastDay.scheduledDate);
-      startDate.setDate(startDate.getDate() + 1);
-    }
+    // 3️⃣ Save into DB
+    const savedDays: Prisma.WorkoutPlanDayGetPayload<{}>[] = [];
+    const startDate = new Date();
 
-    const savedDays = [];
     for (let i = 0; i < data.workout_plan.length; i++) {
       const day = data.workout_plan[i];
-
       const scheduledDate = new Date(startDate);
       scheduledDate.setDate(startDate.getDate() + i);
 
@@ -90,7 +70,7 @@ const fetchAndSaveAIWorkoutPlan = async (
           reps: day.reps,
           description: day.description,
           rest: day.rest,
-          motivationalQuote: day.motivational_quote,
+          motivationalQuote: day.motivational_quote, // map snake_case -> camelCase
           isWorkoutDay: day.is_workout_day,
           videoUrl: day.video_url,
           phase,
@@ -102,53 +82,45 @@ const fetchAndSaveAIWorkoutPlan = async (
       savedDays.push(saved);
     }
 
+    // 4️⃣ Return saved DB records
     return savedDays;
   } catch (err: any) {
-    console.error(`AI API Phase ${phase} error:`, err.response?.data || err.message);
-    throw new Error(`AI API Phase ${phase} request failed`);
+    console.error("AI API error:", err.response?.data || err.message);
+    return []; // return empty array if API fails
   }
 };
 
-
-// Auto-complete past days and generate next phases
-const autoProgressPhases = async (userId: string, requestBody: FetchAIWorkoutPlanRequest) => {
-  // 1️⃣ Mark past or today's days as completed
+const autoProgressPhases = async (
+  userId: string,
+  requestBody: FetchAIWorkoutPlanRequest
+) => {
+  // 1️⃣ Mark past or today’s scheduled days as completed
   await prisma.workoutPlanDay.updateMany({
     where: { userId, completed: false, scheduledDate: { lte: new Date() } },
     data: { completed: true },
   });
 
-  const subscription = await prisma.subscription.findFirst({
-    where: { userId },
-    include: { plan: true },
+  // 2️⃣ Find the highest completed phase
+  const maxCompletedPhase = await prisma.workoutPlanDay.aggregate({
+    where: { userId, completed: true },
+    _max: { phase: true },
   });
 
-  if (!subscription) throw new Error("No active subscription");
+  let nextPhase = (maxCompletedPhase._max.phase ?? 0) + 1;
+  if (nextPhase > 3) return; // No more phases
 
-  const maxPhase = subscription.plan.allowedPhases;
+  // 3️⃣ Generate next phase if needed
+  const remaining = await prisma.workoutPlanDay.findMany({
+    where: { userId, phase: nextPhase },
+  });
 
-  if (maxPhase == null) {
-    throw new Error("Allowed phases not defined in subscription plan");
-  }
-
-  // 3️⃣ Loop through phases
-  for (let phase = 1; phase <= maxPhase; phase++) {
-    const remaining = await prisma.workoutPlanDay.findMany({
-      where: { userId, phase, completed: false },
-    });
-
-    // 4️⃣ If finished and user is allowed next phase → unlock it
-    if (remaining.length === 0 && phase < maxPhase) {
-      const nextPhaseExists = await prisma.workoutPlanDay.findFirst({
-        where: { userId, phase: phase + 1 },
-      });
-
-      if (!nextPhaseExists) {
-        await fetchAndSaveAIWorkoutPlan(phase + 1, requestBody, userId);
-      }
-    }
+  if (!remaining.length) {
+    await fetchAndSaveAIWorkoutPlan(nextPhase, requestBody, userId);
   }
 };
+
+
+
 
 const getTodayWorkoutPlan = async (userId: string) => {
   const todayStart = new Date();

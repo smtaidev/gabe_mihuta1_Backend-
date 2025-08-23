@@ -166,7 +166,6 @@ const resendOtp = async (email: string) => {
 
   // Generate new OTP
   const otp = generateOTP();
-  const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
   await prisma.user.update({
     where: { email },
@@ -176,6 +175,8 @@ const resendOtp = async (email: string) => {
       canResetPassword: false,
     },
   });
+
+  otpStore[email] = { otp, timestamp: Date.now() };
 
   await sendEmail(email, otp);
 

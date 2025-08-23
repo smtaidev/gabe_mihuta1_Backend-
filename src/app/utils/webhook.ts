@@ -10,7 +10,7 @@ const calculateEndDate = (startDate: Date, phase: number): Date => {
 
   switch (phase) {
     case 1:
-      endDate.setDate(endDate.getDate() + 30); // Phase 1 = 30 days
+      endDate.setDate(endDate.getDate() + 30); // Phase 1 = 30 days total
       break;
     case 2:
       endDate.setDate(endDate.getDate() + 60); // Phase 2 = 60 days total
