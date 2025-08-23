@@ -53,7 +53,7 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<void> =>
       `,
     };
 
-    const info = await transporter.sendMail(mailOptions);
+   await transporter.sendMail(mailOptions);
    //onsole.log('Email sent successfully:', info.messageId);
   } catch (error) {
    //onsole.error('Error in sendOTPEmail function:', error);
