@@ -171,6 +171,34 @@ const updateUser = async (payload: UpdateUserPayload) => {
   return updatedUser;
 };
 
+const resendOtp = async (email: string) => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    throw new ApiError(status.NOT_FOUND, "User not found!");
+  }
+
+  // Generate new OTP
+  const otp = generateOTP();
+
+  await prisma.user.update({
+    where: { email },
+    data: {
+      isResentOtp: true,
+      isResetPassword: true,
+      canResetPassword: false,
+    },
+  });
+
+  otpStore[email] = { otp, timestamp: Date.now() };
+
+  await sendOTPEmail(email, otp);
+
+  return {
+    message: "New OTP has been sent to your email for reset password.",
+  };
+};
+
 const deleteUser = async (id: string) => {
 
   //console.log("Deleting user with ID:", id);
@@ -198,5 +226,6 @@ export const UserService = {
   updateUser,
   verifyOTP,
   deleteUser,
+  resendOtp,
 };
 

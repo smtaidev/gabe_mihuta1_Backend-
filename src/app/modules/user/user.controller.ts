@@ -75,6 +75,17 @@ const updateUser = catchAsync(async (req, res) => {
   });
 });
 
+const resendOtp = catchAsync(async (req, res) => {
+  const { email } = req.body;
+
+  const result = await UserService.resendOtp(email);
+
+  sendResponse(res, {
+    statusCode: status.OK,
+    message: result.message,
+  });
+});
+
 const deleteUser = catchAsync(async (req, res) => {
   const  userId  = req.params.id;
 
@@ -102,4 +113,5 @@ export const UserController = {
   updateUser,
   verifyOTP,
   deleteUser,
+  resendOtp,
 };

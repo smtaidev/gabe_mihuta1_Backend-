@@ -14,9 +14,6 @@ router.get("/", auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), UserController.getAl
 
 router.get("/:userId", auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), UserController.getSingleUserById);
 
-
-
-
 router.post(
   "/register",
   validateRequest(UserValidation.createUserValidationSchema),
@@ -33,7 +30,10 @@ router.delete(
   UserController.deleteUser
 );
 
-
-
+router.post(
+  "/resend-otp",
+  validateRequest(UserValidation.resendOtpValidationSchema),
+  UserController.resendOtp
+);
 
 export const UserRoutes = router;
