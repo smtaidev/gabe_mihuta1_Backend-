@@ -157,22 +157,9 @@ const getSingleUserByIdFromDB = async (userId: string) => {
   return rest;
 };
 
-const updateUser = async (userId: string, payload: UpdateUserPayload) => {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
-
-  if (!user) {
-    throw new ApiError(status.NOT_FOUND, "User not found!");
-  }
-
-  // If new password is provided, hash it
-  if (payload.newPassword) {
-    payload.password = await hashPassword(payload.newPassword);
-  }
-
+const updateUser = async (payload: UpdateUserPayload) => {
   const updatedUser = await prisma.user.update({
-    where: { id: userId },
+    where: { email: payload.email },
     data: { 
       gender: payload.gender,
       age: payload.age,
@@ -181,7 +168,6 @@ const updateUser = async (userId: string, payload: UpdateUserPayload) => {
       level: payload.level,
      },
   });
-
   return updatedUser;
 };
 

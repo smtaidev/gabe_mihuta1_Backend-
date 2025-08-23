@@ -55,12 +55,12 @@ const getSingleUserById = catchAsync(async (req, res) => {
 });
 
 const updateUser = catchAsync(async (req, res) => {
-  const  userId  = req.user?.id;
-  const { gender, age, height, weight, level } = req.body;
+  const { email, gender, age, height, weight, level } = req.body;
 
-  console.log(userId)
+  
 
-  const result = await UserService.updateUser(userId, {
+  const result = await UserService.updateUser({
+    email,
     gender,
     age,
     height,
