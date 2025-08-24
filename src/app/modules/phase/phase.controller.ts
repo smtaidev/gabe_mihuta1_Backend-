@@ -17,11 +17,31 @@ const fetchAIPlanController = catchAsync(async (req, res) => {
   // 1. Find the last phase the user has
   const lastPhaseRecord = await prisma.workoutPlanDay.findFirst({
     where: { userId: user.id },
-    orderBy: { phase: 'desc' },
+    orderBy: { phase: "desc" },
   });
 
-  let nextPhase = 1; // default first phase
+  // default first phase
+  let nextPhase = 1;
+
   if (lastPhaseRecord) {
+    // 🔎 2. Check if the current phase is fully completed
+    const incompleteWorkout = await prisma.workoutPlanDay.findFirst({
+      where: {
+        userId: user.id,
+        phase: lastPhaseRecord.phase,
+        completed: false,
+      },
+    });
+
+    if (incompleteWorkout) {
+      // ❌ still in progress → block request
+      throw new ApiError(
+        status.BAD_REQUEST,
+        `You are still in Phase ${lastPhaseRecord.phase}. Complete it before generating the next phase.`
+      );
+    }
+
+    // ✅ safe to move to next phase
     if (lastPhaseRecord.phase < 3) {
       nextPhase = lastPhaseRecord.phase + 1;
     } else {
