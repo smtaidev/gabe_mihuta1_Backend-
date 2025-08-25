@@ -34,7 +34,7 @@ enum PaymentStatus {
 
 model User {
   id                String    @id @default(auto()) @map("_id") @db.ObjectId
-  fullaName         String
+  fullName          String?
   email             String    @unique
   password          String
   isVerified        Boolean   @default(false)

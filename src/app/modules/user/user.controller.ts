@@ -55,18 +55,19 @@ const getSingleUserById = catchAsync(async (req, res) => {
 });
 
 const updateUser = catchAsync(async (req, res) => {
-  const { email, gender, age, height, weight, level } = req.body;
+  const  userId  = req.user.id;
 
-  
+  console.log(userId);
 
-  const result = await UserService.updateUser({
-    email,
-    gender,
-    age,
-    height,
-    weight,
-    level,
-  });
+  if (!userId) {
+    throw new ApiError(status.BAD_REQUEST, "User ID is required");
+  }
+
+  if (req.file) {
+    req.body.profilePic = `${config.imageUrl}/uploads/${req.file.filename}`;
+  }
+
+  const result = await UserService.updateUser(userId, req.body);
 
   sendResponse(res, {
     statusCode: status.OK,
@@ -87,9 +88,9 @@ const resendOtp = catchAsync(async (req, res) => {
 });
 
 const deleteUser = catchAsync(async (req, res) => {
-  const  userId  = req.params.id;
+  const userId = req.user.id;
 
- // console.log("Deleting user with ID:", userId);
+  //console.log("Deleting user with ID:", userId);
 
   if (!userId) {
     throw new ApiError(status.BAD_REQUEST, "User ID is required");

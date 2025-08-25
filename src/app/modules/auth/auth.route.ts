@@ -7,7 +7,6 @@ import { AuthValidation } from "./auth.validation";
 
 const router = Router();
 
-
 router.post(
   "/login",
   validateRequest(AuthValidation.loginValidationSchema),
@@ -30,13 +29,13 @@ router.post(
 router.post("/reset-password", AuthController.resetPassword);
 router.post("/verify-otp", AuthController.verifyOTP);
 
-
 router.post(
   "/resend-otp",
   validateRequest(AuthValidation.resendOtpValidationSchema),
   AuthController.resendOtp
 );
 
+router.get("/me", auth(), AuthController.getMe);
 
 router.post("/refresh-token", AuthController.refreshToken);
 

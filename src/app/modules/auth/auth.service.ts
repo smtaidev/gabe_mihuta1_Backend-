@@ -29,7 +29,7 @@ const loginUser = async (email: string, password: string) => {
 
   const jwtPayload = {
     id: user.id,
-    fullName: user.fullaName,
+    fullName: user.fullName,
     email: user.email,
     profilePic: user.profilePic,
     role: user.role,
@@ -192,10 +192,12 @@ const getMe = async (email: string) => {
     where: { email },
     select: {
       id: true,
-      fullaName: true,
+      fullName: true,
       email: true,
       profilePic: true,
       role: true,
+      isVerified: true,
+      isSubscribed: true,
     },
   });
 
@@ -214,7 +216,7 @@ export const refreshToken = async (token: string) => {
     where: { email },
     select: {
       id: true,
-      fullaName: true,
+      fullName: true,
       email: true,
       role: true,
       profilePic: true,
@@ -240,7 +242,7 @@ export const refreshToken = async (token: string) => {
 
   const jwtPayload = {
     id: user.id,
-    fullName: user.fullaName,
+    fullName: user.fullName,
     email: user.email,
     role: user.role,
     profilePic: user?.profilePic,
@@ -282,9 +284,6 @@ const verifyOTP = async (email: string, otp: string) => {
 
   return { message: "OTP verified successfully. You may now reset your password." };
 };
-
-
-
 
 export const AuthService = {
   getMe,

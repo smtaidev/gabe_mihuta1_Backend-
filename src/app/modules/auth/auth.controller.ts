@@ -94,8 +94,17 @@ const resendOtp = catchAsync(async (req, res) => {
   });
 });
 
+const getMe = catchAsync(async (req, res) => {
+  const email = req.user?.email as string;
 
+  const result = await AuthService.getMe(email);
 
+  sendResponse(res, {
+    statusCode: status.OK,
+    message: 'User fetched successfully!',
+    data: result,
+  });
+});
 
 const refreshToken = catchAsync(async (req, res) => {
   const { refreshToken } = req.cookies;
@@ -117,4 +126,5 @@ export const AuthController = {
   changePassword,
   verifyOTP,
   resendOtp,
+  getMe,
 };

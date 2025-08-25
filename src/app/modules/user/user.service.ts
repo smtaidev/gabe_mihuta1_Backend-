@@ -43,7 +43,7 @@ const createUserIntoDB = async (payload: any) => {
   
   // 3️⃣ Create new user
   const userData = {
-    fullaName: fullName,
+    fullName: fullName,
     email,
     password: hashedPassword,
   };
@@ -157,17 +157,62 @@ const getSingleUserByIdFromDB = async (userId: string) => {
   return rest;
 };
 
-const updateUser = async (payload: UpdateUserPayload) => {
-  const updatedUser = await prisma.user.update({
-    where: { email: payload.email },
-    data: { 
-      gender: payload.gender,
-      age: payload.age,
-      height: payload.height,
-      weight: payload.weight,
-      level: payload.level,
-     },
+const updateUser = async (userId: string, payload: UpdateUserPayload) => {
+  const isUserExist = await prisma.user.findUnique({
+    where: { id: userId },
   });
+
+  if (!isUserExist) {
+    throw new ApiError(status.NOT_FOUND, "User not found!");
+  }
+
+  if(!payload.fullName){
+    payload.fullName = isUserExist.fullName;
+  }
+  if (!payload.profilePic) {
+    payload.profilePic = isUserExist.profilePic;
+  }
+  if (!payload.gender) {
+    payload.gender = isUserExist.gender;
+  }
+  if (!payload.age) {
+    payload.age = isUserExist.age;
+  }
+  if (!payload.height) {
+    payload.height = isUserExist.height;
+  }
+  if (!payload.weight) {
+    payload.weight = isUserExist.weight;
+  }
+  if (!payload.level) {
+    payload.level = isUserExist.level;
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      fullName: payload.fullName,
+      profilePic: payload.profilePic || "",
+      gender: payload.gender || isUserExist.gender,
+      age: payload.age || isUserExist.age,
+      height: payload.height || isUserExist.height,
+      weight: payload.weight || isUserExist.weight,
+      level: payload.level || isUserExist.level,
+    },
+    select: {
+      id: true,
+      fullName: true,
+      profilePic: true,
+      gender: true,
+      age: true,
+      height: true,
+      weight: true,
+      level: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
   return updatedUser;
 };
 
@@ -199,21 +244,20 @@ const resendOtp = async (email: string) => {
   };
 };
 
-const deleteUser = async (id: string) => {
-
-  //console.log("Deleting user with ID:", id);
-  // Check if user exists
+const deleteUser = async (userId: string) => {
   const existingUser = await prisma.user.findUnique({
-    where: { id },
+    where: { id: userId },
   });
 
   if (!existingUser) {
     throw new ApiError(status.NOT_FOUND, "User not found");
   }
 
+  console.log(existingUser);
+
   // Delete user
   const deletedUser = await prisma.user.delete({
-    where: { id },
+    where: { id: userId },
   });
 
   return deletedUser;

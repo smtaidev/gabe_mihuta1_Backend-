@@ -3,7 +3,7 @@ import jwt, { JwtPayload } from "jsonwebtoken";
 
 export type IJwtPayload = {
   id?: string;
-  fullName: string;
+  fullName: string | null;
   email: string;
   profilePic?: string | null;
   role: UserRole;
