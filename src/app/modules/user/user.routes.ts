@@ -6,7 +6,7 @@ import { UserValidation } from "./user.validation";
 import { UserController } from "./user.controller";
 import validateRequest from "../../middlewares/validateRequest";
 import { NextFunction, Request, Response, Router } from "express";
-import upload from "../../utils/upload";
+import {upload} from "../../utils/upload";
 
 
 const router = Router();

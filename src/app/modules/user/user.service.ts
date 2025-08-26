@@ -192,12 +192,12 @@ const updateUser = async (userId: string, payload: UpdateUserPayload) => {
     where: { id: userId },
     data: {
       fullName: payload.fullName,
-      profilePic: payload.profilePic || "",
-      gender: payload.gender || isUserExist.gender,
-      age: payload.age || isUserExist.age,
-      height: payload.height || isUserExist.height,
-      weight: payload.weight || isUserExist.weight,
-      level: payload.level || isUserExist.level,
+      profilePic: payload.profilePic,
+      gender: payload.gender,
+      age: payload.age,
+      height: payload.height,
+      weight: payload.weight,
+      level: payload.level,
     },
     select: {
       id: true,
