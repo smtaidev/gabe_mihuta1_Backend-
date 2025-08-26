@@ -25,7 +25,7 @@ const login = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: status.OK,
     message: "User logged in successfully!",
-    data: { accessToken },
+    data: { accessToken,refreshToken },
   });
 });
 
@@ -106,6 +106,21 @@ const getMe = catchAsync(async (req, res) => {
   });
 });
 
+// controller
+const logout = catchAsync(async (req, res) => {
+  // If token is in a cookie, clear it
+  const { accessToken } = req.cookies;
+
+  res.clearCookie("accessToken");
+
+  sendResponse(res, {
+    statusCode: status.OK,
+    message: "User logged out successfully!",
+  });
+});
+
+
+
 const refreshToken = catchAsync(async (req, res) => {
   const { refreshToken } = req.cookies;
 
@@ -127,4 +142,5 @@ export const AuthController = {
   verifyOTP,
   resendOtp,
   getMe,
+  logout,
 };

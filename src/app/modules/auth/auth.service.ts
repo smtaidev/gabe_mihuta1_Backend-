@@ -257,6 +257,16 @@ export const refreshToken = async (token: string) => {
   return { accessToken };
 };
 
+// service
+// service
+const logout = async () => {
+  // Nothing to invalidate on server
+  return { message: "User logged out successfully!" };
+};
+
+
+
+
 const verifyOTP = async (email: string, otp: string) => {
   if (!email || !otp)
     throw new ApiError(status.BAD_REQUEST, "Email and OTP are required.");
@@ -294,4 +304,5 @@ export const AuthService = {
   forgotPassword,
   verifyOTP,
   resendOtp,
+  logout,
 };
