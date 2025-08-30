@@ -1,4 +1,4 @@
-import {  PaymentStatus } from '@prisma/client';
+import { PaymentStatus } from '@prisma/client';
 import status from "http-status";
 import ApiError from "../errors/ApiError";
 import prisma from "./prisma";
@@ -64,7 +64,7 @@ const handlePaymentIntentSucceeded = async (
 
   // Execute both updates in a transaction
   await prisma.$transaction([
-    
+
     prisma.subscription.update({
       where: { id: payment.id },
       data: {
@@ -73,14 +73,14 @@ const handlePaymentIntentSucceeded = async (
         //endDate,
       },
     }),
-    prisma.user.update({
-      where: { id: payment.userId },
-      data: {
-        subscribed: "SUBSCRIBED",
-        //planExpiration: endDate,
-      },
-    }),
   ]);
+  prisma.user.update({
+    where: { id: payment.userId },
+    data: {
+      subscribed: "SUBSCRIBED",
+      //planExpiration: endDate,
+    },
+  });
 
 };
 
