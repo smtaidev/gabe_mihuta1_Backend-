@@ -5,6 +5,8 @@ import { UserRoutes } from "../modules/user/user.routes";
 import { PhaseRoutes } from "../modules/phase/phase.route";
 import { PlanRoutes } from "../modules/plan/plan.route";
 import { SubscriptionRoutes } from '../modules/subscription/subscription.route';
+import { AdminRoutes } from '../modules/admin/admin.route';
+import { GroupRoutes } from '../modules/group/group.route';
 
 const router = Router();
 
@@ -28,6 +30,14 @@ const moduleRoutes = [
   {
     path: "/subscriptions",
     route: SubscriptionRoutes,
+  },
+  {
+    path: "/admin",
+    route: AdminRoutes,
+  },
+  {
+    path: "/groups",
+    route: GroupRoutes,
   }
 
 ];

@@ -1,7 +1,16 @@
-import { Plan } from "@prisma/client";
 import prisma from "../../utils/prisma";
 import { stripe } from "../../utils/stripe";
 import ApiError from "../../errors/ApiError";
+
+interface Plan {
+  planName: string;
+  amount: number;
+  currency?: string;
+  description?: string;
+  allowedPhases?: number;
+  facilities?: string[];
+  active?: boolean;
+}
 
 const createPlan = async (payload: Plan) => {
   const result = await prisma.$transaction(async (tx) => {
@@ -14,7 +23,6 @@ const createPlan = async (payload: Plan) => {
 
     let priceId: string | null = null;
     if (payload.amount > 0) {
-      // Paid plan → create Stripe price
       const price = await stripe.prices.create({
         currency: payload.currency || "eur",
         unit_amount: Math.round(payload.amount * 100),
@@ -22,20 +30,21 @@ const createPlan = async (payload: Plan) => {
         active: true,
       });
 
-      priceId = price.id; 
+      priceId = price.id;
     }
 
-    // Prisma create
+    // 2️⃣ Create Plan in DB
     const dbPlan = await tx.plan.create({
       data: {
         planName: payload.planName,
         amount: payload.amount,
         currency: payload.currency || "eur",
         productId: product.id,
-        priceId: priceId,           
+        priceId: priceId,
         active: payload.active ?? true,
         description: payload.description,
-        allowedPhases: payload.allowedPhases ?? 0, 
+        allowedPhases: payload.allowedPhases ?? 0,
+        facilities: payload.facilities || [], // <-- Add facilities here
       },
     });
 
@@ -48,8 +57,20 @@ const createPlan = async (payload: Plan) => {
 
 
 
+
 const getAllPlans = async () => {
-  const plans = await prisma.plan.findMany();
+  const plans = await prisma.plan.findMany({
+    select: {
+      id: true,
+      planName: true,
+      amount: true,
+      currency: true,
+      description: true,
+      allowedPhases: true,
+      facilities: true,
+      //active: true,
+    },
+  });
   return plans;
 };
 

@@ -1,29 +1,29 @@
-import { PaymentStatus } from '@prisma/client';
+import {  PaymentStatus } from '@prisma/client';
 import status from "http-status";
 import ApiError from "../errors/ApiError";
 import prisma from "./prisma";
 import Stripe from "stripe";
 
 // Helper function to calculate end date based on plan interval
-const calculateEndDate = (startDate: Date, phase: number): Date => {
-  const endDate = new Date(startDate);
+// const calculateEndDate = (startDate: Date, phase: number): Date => {
+//   const endDate = new Date(startDate);
 
-  switch (phase) {
-    case 1:
-      endDate.setDate(endDate.getDate() + 30); // Phase 1 = 30 days total
-      break;
-    case 2:
-      endDate.setDate(endDate.getDate() + 60); // Phase 2 = 60 days total
-      break;
-    case 3:
-      endDate.setDate(endDate.getDate() + 90); // Phase 3 = 90 days total
-      break;
-    default:
-      throw new ApiError(status.BAD_REQUEST, `Unsupported phase: ${phase}`);
-  }
+//   switch (phase) {
+//     case 1:
+//       endDate.setDate(endDate.getDate() + 30); // Phase 1 = 30 days total
+//       break;
+//     case 2:
+//       endDate.setDate(endDate.getDate() + 60); // Phase 2 = 60 days total
+//       break;
+//     case 3:
+//       endDate.setDate(endDate.getDate() + 90); // Phase 3 = 90 days total
+//       break;
+//     default:
+//       throw new ApiError(status.BAD_REQUEST, `Unsupported phase: ${phase}`);
+//   }
 
-  return endDate;
-};
+//   return endDate;
+// };
 
 const handlePaymentIntentSucceeded = async (
   paymentIntent: Stripe.PaymentIntent
@@ -58,28 +58,30 @@ const handlePaymentIntentSucceeded = async (
   }
 
   const startDate = new Date();
-  const endDate = calculateEndDate(
-    startDate, payment.plan.allowedPhases ?? 1
-  );
+  // const endDate = calculateEndDate(
+  //   startDate, payment.plan.allowedPhases ?? 1
+  // );
 
   // Execute both updates in a transaction
   await prisma.$transaction([
-    prisma.user.update({
-      where: { id: payment.userId },
-      data: {
-        isSubscribed: true,
-        planExpiration: endDate,
-      },
-    }),
+    
     prisma.subscription.update({
       where: { id: payment.id },
       data: {
         paymentStatus: PaymentStatus.COMPLETED,
         startDate,
-        endDate,
+        //endDate,
+      },
+    }),
+    prisma.user.update({
+      where: { id: payment.userId },
+      data: {
+        subscribed: "SUBSCRIBED",
+        //planExpiration: endDate,
       },
     }),
   ]);
+
 };
 
 const handlePaymentIntentFailed = async (

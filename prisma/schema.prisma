@@ -32,33 +32,90 @@ enum PaymentStatus {
   REFUNDED
 }
 
-model User {
-  id                String    @id @default(auto()) @map("_id") @db.ObjectId
-  fullName          String?
-  email             String    @unique
-  password          String
-  isVerified        Boolean   @default(false)
-  profilePic        String?   @default("")
-  gender            String?   @default("OTHER")
-  age               Float?    @default(0)
-  height            Float?    @default(0)
-  weight            Float?    @default(0)
-  level             String?   @default("BEGINNER")
-  passwordChangedAt DateTime?
-  isResetPassword   Boolean   @default(false)
-  canResetPassword  Boolean   @default(false)
-  isResentOtp       Boolean   @default(false)
-  role              UserRole  @default(USER)
-  planExpiration    DateTime?
-  isSubscribed      Boolean   @default(false)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
 
+
+model User {
+  id                String     @id @default(auto()) @map("_id") @db.ObjectId
+  fullName          String?
+  email             String     @unique
+  password          String
+  isVerified        Boolean    @default(false)
+  profilePic        String?    @default("")
+  gender            String?    @default("OTHER")
+  age               Float?     @default(0)
+  height            Float?     @default(0)
+  weight            Float?     @default(0)
+  level             String?    @default("BEGINNER")
+  passwordChangedAt DateTime?
+  status            UserStatus @default(ACTIVE)
+  isResetPassword   Boolean    @default(false)
+  canResetPassword  Boolean    @default(false)
+  isResentOtp       Boolean    @default(false)
+  role              UserRole   @default(USER)
+  planExpiration    DateTime?
+  phone             String?
+  subscribed        String?    @default("FREE_USER")
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  // Existing relations
   workoutPlanDays WorkoutPlanDay[]
   missions        Mission[]
   subscriptions   Subscription[]
 
+  // New relations
+  memberships GroupMembership[]
+  messages    Message[]
+
   @@map("users")
+}
+
+// ----------------------------
+// Group Model (created by Admin)
+// ----------------------------
+model Group {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  createdBy String   @db.ObjectId // Admin User ID
+  createdAt DateTime @default(now())
+
+  memberships GroupMembership[]
+  messages    Message[]
+
+  @@map("groups")
+}
+
+// ----------------------------
+// GroupMembership (link User <-> Group)
+// ----------------------------
+model GroupMembership {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  groupId   String   @db.ObjectId
+  role      String   @default("member") // member | admin
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  group Group @relation(fields: [groupId], references: [id])
+
+  @@unique([userId, groupId])
+  @@map("group_memberships")
+}
+
+// ----------------------------
+// Message Model (chat messages inside groups)
+// ----------------------------
+model Message {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  groupId   String   @db.ObjectId
+  senderId  String?  @db.ObjectId
+  body      String
+  createdAt DateTime @default(now())
+
+  group  Group @relation(fields: [groupId], references: [id])
+  sender User? @relation(fields: [senderId], references: [id])
+
+  @@map("messages")
 }
 
 model WorkoutPlanDay {
@@ -107,6 +164,7 @@ model Plan {
   active           Boolean?       @default(true)
   allowedPhases    Int?           @default(0)
   description      String?
+  facilities       String[]       @default([])
   features         Json?
   totalSubscribers Int?           @default(0)
   Subscription     Subscription[]
@@ -117,17 +175,19 @@ model Plan {
 }
 
 model Subscription {
-  id              String    @id @default(auto()) @map("_id") @db.ObjectId
-  userId          String    @unique @db.ObjectId
-  planId          String    @db.ObjectId
-  paymentStatus   String
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String        @unique @db.ObjectId
+  planId          String        @db.ObjectId
+  paymentStatus   PaymentStatus
   amount          Float
-  stripePaymentId String    @unique
+  stripePaymentId String        @unique
   startDate       DateTime
   endDate         DateTime?
   endsAt          DateTime?
-  user            User      @relation(fields: [userId], references: [id])
-  plan            Plan      @relation(fields: [planId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id])
+  plan            Plan          @relation(fields: [planId], references: [id])
 
   @@map("subscriptions")
 }

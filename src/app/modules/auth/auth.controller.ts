@@ -6,8 +6,6 @@ import config from "../../config";
 import { log } from "console";
 import ApiError from "../../errors/ApiError";
 
-
-
 const login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
 

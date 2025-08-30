@@ -197,7 +197,7 @@ const getMe = async (email: string) => {
       profilePic: true,
       role: true,
       isVerified: true,
-      isSubscribed: true,
+      subscribed: true,
     },
   });
 

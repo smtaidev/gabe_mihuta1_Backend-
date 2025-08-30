@@ -1,16 +1,12 @@
 import status from "http-status";
-import { User, UserRole } from "@prisma/client";
+import { User } from "@prisma/client";
 import prisma from "../../utils/prisma";
 import ApiError from "../../errors/ApiError";
-import { sendEmail } from "../../utils/sendEmail";
 import QueryBuilder from "../../builder/QueryBuilder";
-import config from "../../config";
-import { createToken } from "../auth/auth.utils";
 import hashPassword from "../../helpers/hashPassword";
-import { passwordCompare } from "../../utils/comparePasswords";
 import { sendOTPEmail } from "../../utils/sendOtp";
 import { generateOTP } from "../../utils/generateOTP";
-import { CLIENT_RENEG_LIMIT } from "tls";
+import { adminSockets } from "../../helpers/chat";
 
 const otpStore: { [key: string]: { otp: string; timestamp: number } } = {};
 
@@ -40,12 +36,13 @@ const createUserIntoDB = async (payload: any) => {
   }
   // 2️⃣ Hash password
   const hashedPassword = await hashPassword(password);
-  
+
   // 3️⃣ Create new user
   const userData = {
     fullName: fullName,
     email,
     password: hashedPassword,
+    subscribed: "FREE_USER",
   };
 
   await prisma.user.create({ data: userData });
@@ -71,6 +68,21 @@ const createUserIntoDB = async (payload: any) => {
   }
 
   // 7️⃣ Return success message
+
+  // 7️⃣ Notify all connected admins via WebSocket
+  const notification = {
+    event: "newUserRegistered",
+    payload: {
+      fullName: userData.fullName,
+      email: userData.email,
+    },
+  };
+
+  for (const adminSocket of adminSockets) {
+    if (adminSocket.readyState === adminSocket.OPEN) {
+      adminSocket.send(JSON.stringify(notification));
+    }
+  }
   return {
     message:
       "We have sent a confirmation email to your email address. Please check your inbox.",
@@ -83,7 +95,7 @@ export const verifyOTP = async (email: string, otp: string) => {
   }
 
   const storedData = otpStore[email];
-  
+
   if (!storedData) {
     throw new ApiError(status.BAD_REQUEST, "No OTP found for this email.");
   }
@@ -166,7 +178,7 @@ const updateUser = async (userId: string, payload: UpdateUserPayload) => {
     throw new ApiError(status.NOT_FOUND, "User not found!");
   }
 
-  if(!payload.fullName){
+  if (!payload.fullName) {
     payload.fullName = isUserExist.fullName;
   }
   if (!payload.profilePic) {

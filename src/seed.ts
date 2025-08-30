@@ -22,6 +22,7 @@ const seedSuperAdmin = async () => {
         email: "super@admin.com",
         password: password,
         role: UserRole.SUPER_ADMIN,
+        isVerified: true
       },
     });
     console.log("Creating Super Admin with role:", UserRole.SUPER_ADMIN);

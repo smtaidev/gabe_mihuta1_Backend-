@@ -23,6 +23,7 @@
     "@types/node": "^22.15.17",
     "@types/streamifier": "^0.1.2",
     "@types/stripe": "^8.0.416",
+    "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.32.0",
     "@typescript-eslint/parser": "^8.32.0",
     "eslint": "^9.26.0",
@@ -48,6 +49,7 @@
     "nodemailer": "^7.0.3",
     "streamifier": "^0.1.1",
     "stripe": "^18.2.1",
+    "ws": "^8.18.3",
     "zod": "^3.24.4"
   }
 }
