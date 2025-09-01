@@ -1,3 +1,4 @@
+import { User } from '@prisma/client';
 import status from "http-status";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
@@ -11,7 +12,15 @@ const login = catchAsync(async (req, res) => {
 
   const result = await AuthService.loginUser(email, password);
 
-  const { accessToken, refreshToken } = result;
+  const { accessToken, refreshToken, user } = result;
+
+  const userData = {
+    userId: user.id,
+    fullName: user.fullName,
+    role: user.role,
+    phone: user.phone,
+    profilePic: user.profilePic,
+  };
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
@@ -23,7 +32,7 @@ const login = catchAsync(async (req, res) => {
   sendResponse(res, {
     statusCode: status.OK,
     message: "User logged in successfully!",
-    data: { accessToken,refreshToken },
+    data: { accessToken, userData },
   });
 });
 

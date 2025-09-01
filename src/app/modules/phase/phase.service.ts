@@ -106,7 +106,7 @@ const phase1Plan = async (
   }
 };
 
-const lastPhasePlan = async (phase: number,
+const Phase2Plan = async (phase: number,
   requestBody: FetchAIWorkoutPlanRequest,
   userId: string) => {
 
@@ -134,7 +134,7 @@ const lastPhasePlan = async (phase: number,
     orderBy: { startDate: "desc" },
   });
 
-  if(!subscription){
+  if (!subscription) {
     throw new Error("No active subscription");
   }
   const newEndDate = new Date();
@@ -160,7 +160,7 @@ const lastPhasePlan = async (phase: number,
     if (!data?.workout_plan) throw new Error("Invalid AI response");
 
     // ✅ Find last scheduled day for this user
-    
+
     // ✅ Start next phase 1 day after lastDay, or today if first phase
     let startDate = new Date();
     startDate.setDate(startDate.getDate() + 1);
@@ -191,7 +191,6 @@ const lastPhasePlan = async (phase: number,
 
       savedDays.push(saved);
     }
-
     // 4️⃣ Return saved DB records
     return savedDays;
   } catch (err: any) {
@@ -349,6 +348,102 @@ const lastPhasePlan = async (phase: number,
 //     }
 //   }
 // };
+const Phase3Plan = async (phase: number,
+  requestBody: FetchAIWorkoutPlanRequest,
+  userId: string) => {
+
+    console.log(phase);
+
+  const latestSubscription = await prisma.subscription.findFirst({
+    where: {
+      userId,
+      paymentStatus: "COMPLETED",
+      startDate: { lte: new Date() },
+      OR: [
+        { endDate: null },
+        { endDate: { gte: new Date() } }, // still active
+      ],
+    },
+    orderBy: { startDate: "desc" },
+  });
+
+  if (!latestSubscription) {
+    return { success: false, message: "No active subscription found" };
+  }
+
+  const subscription = await prisma.subscription.findFirst({
+    where: { userId, paymentStatus: "COMPLETED" },
+    orderBy: { startDate: "desc" },
+  });
+
+  if (!subscription) {
+    throw new Error("No active subscription");
+  }
+
+  const newEndDate = new Date();
+  newEndDate.setDate(newEndDate.getDate() + 30);
+
+  //3️⃣ Update subscription endDate
+  await prisma.subscription.update({
+    where: { id: latestSubscription.id },
+    data: { endDate: newEndDate },
+  });
+
+  // 2️⃣ Calculate new end date: 60 days from today
+
+  const aiApiUrl = PHASE_APIS[phase];
+  console.log(aiApiUrl)
+  if (!aiApiUrl) return []; // No API, skip
+
+  try {
+    // 1️⃣ Fetch from AI API
+    const { data } = await axios.post<{ workout_plan: AIWorkoutDay[] }>(
+      aiApiUrl,
+      requestBody,
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    if (!data?.workout_plan) throw new Error("Invalid AI response");
+
+    // ✅ Find last scheduled day for this user
+
+    // ✅ Start next phase 1 day after lastDay, or today if first phase
+    let startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1);
+    const savedDays = [];
+
+    for (let i = 0; i < data.workout_plan.length; i++) {
+      const day = data.workout_plan[i];
+      const scheduledDate = new Date(startDate);
+      scheduledDate.setDate(startDate.getDate() + i);
+
+      const saved = await prisma.workoutPlanDay.create({
+        data: {
+          userId,
+          day: day.day,
+          name: day.name,
+          sets: day.sets,
+          reps: day.reps,
+          description: day.description,
+          rest: day.rest,
+          motivationalQuote: day.motivational_quote, // map snake_case -> camelCase
+          isWorkoutDay: day.is_workout_day,
+          videoUrl: day.video_url,
+          phase,
+          scheduledDate,
+          completed: false,
+        },
+      });
+
+      savedDays.push(saved);
+    }
+    // 4️⃣ Return saved DB records
+    return savedDays;
+  } catch (err: any) {
+    console.error("AI API error:", err.response?.data || err.message);
+    return []; // return empty array if API fails
+  }
+};
 
 const getTodayWorkoutPlan = async (userId: string) => {
   const todayStart = new Date();
@@ -373,7 +468,7 @@ const getTodayWorkoutPlan = async (userId: string) => {
 
 export const workoutPlanService = {
   phase1Plan,
-  //autoProgressPhases,
   getTodayWorkoutPlan,
-  lastPhasePlan,
+  Phase2Plan,
+  Phase3Plan,
 };

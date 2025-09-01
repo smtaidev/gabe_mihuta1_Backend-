@@ -10,11 +10,9 @@ import { adminSockets } from "../../helpers/chat";
 
 const otpStore: { [key: string]: { otp: string; timestamp: number } } = {};
 
-// Helper to generate 6-digit OTP
-
 
 const createUserIntoDB = async (payload: any) => {
-  const { fullName, email, password, confirmPassword } = payload;
+  const { fullName, email, password } = payload;
 
   // 1️⃣ Check if email already exists
   const isUserExistByEmail = await prisma.user.findUnique({
@@ -28,12 +26,6 @@ const createUserIntoDB = async (payload: any) => {
     );
   }
 
-  if (password !== confirmPassword) {
-    throw new ApiError(
-      status.BAD_REQUEST,
-      "Password and confirm password do not match!"
-    );
-  }
   // 2️⃣ Hash password
   const hashedPassword = await hashPassword(password);
 

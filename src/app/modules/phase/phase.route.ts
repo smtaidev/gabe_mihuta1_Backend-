@@ -8,7 +8,9 @@ const router = express.Router();
 
 router.post("/generate-phase1", auth(UserRole.USER), phaseController.phase1Plan);
 
-router.post("/generate-lastPhase", auth(UserRole.USER), phaseController.lastPhasePlan);
+router.post("/generate-Phase2", auth(UserRole.USER), phaseController.Phase2Plan);
+
+router.post("/generate-Phase3", auth(UserRole.USER), phaseController.Phase3Plan);
 
 //router.post("/fetch-ai-plan", auth(UserRole.USER), phaseController.fetchAIPlanController);
 

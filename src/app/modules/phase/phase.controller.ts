@@ -46,14 +46,14 @@ const phase1Plan = catchAsync(async (req, res) => {
     }
 
     // ✅ Safe to move to next phase
-    if (lastPhaseRecord.phase < 3) {
-      nextPhase = lastPhaseRecord.phase + 1;
-    } else {
-      return sendResponse(res, {
-        statusCode: status.OK,
-        message: "Phase 3 completed. You can start a new Phase 1 manually.",
-      });
-    }
+    // if (lastPhaseRecord.phase < 3) {
+    //   nextPhase = lastPhaseRecord.phase + 1;
+    // } else {
+    //   return sendResponse(res, {
+    //     statusCode: status.OK,
+    //     message: "Phase 3 completed. You can start a new Phase 1 manually.",
+    //   });
+    // }
   }
   // Generate plan for next phase
   const savedPlan = await workoutPlanService.phase1Plan(
@@ -69,57 +69,123 @@ const phase1Plan = catchAsync(async (req, res) => {
   });
 });
 
-const lastPhasePlan = catchAsync(async(req, res) => {
+const Phase2Plan = catchAsync(async (req, res) => {
   const user = req.user;
 
-  if(!user) throw new ApiError(status.UNAUTHORIZED, "User not found");
-  
+  if (!user) throw new ApiError(status.UNAUTHORIZED, "User not found");
+
 
   const generatedMission = await prisma.mission.findFirst({
     where: { userId: user.id },
     orderBy: { createdAt: "desc" },
   });
 
-  // const lastPhaseRecord = await prisma.workoutPlanDay.findFirst({
-  //   where: { userId: user.id },
-  //   orderBy: { phase: "desc" },
-  // });
+  const lastPhaseRecord = await prisma.workoutPlanDay.findFirst({
+    where: { userId: user.id },
+    orderBy: { phase: "desc" },
+  });
 
-  // // default first phase
-  // if (lastPhaseRecord) {
-  //   // 🔎 Find the last scheduled workout of this phase
-  //   const lastWorkoutOfPhase = await prisma.workoutPlanDay.findFirst({
-  //     where: { userId: user.id, phase: lastPhaseRecord.phase },
-  //     orderBy: { scheduledDate: "desc" },
-  //   });
+  if (!lastPhaseRecord || lastPhaseRecord?.phase !== 1) {
+    throw new ApiError(status.BAD_REQUEST, "You have to complete phase 1 first.");
+  }
+  // default first phase
+  if (lastPhaseRecord) {
+    // 🔎 Find the last scheduled workout of this phase
+    const lastWorkoutOfPhase = await prisma.workoutPlanDay.findFirst({
+      where: { userId: user.id, phase: lastPhaseRecord.phase },
+      orderBy: { scheduledDate: "desc" },
+    });
 
-  //   if (!lastWorkoutOfPhase) {
-  //     throw new ApiError(
-  //       status.BAD_REQUEST,
-  //       `No workouts found in Phase ${lastPhaseRecord.phase}.`
-  //     );
-  //   }
+    if (!lastWorkoutOfPhase) {
+      throw new ApiError(
+        status.BAD_REQUEST,
+        `No workouts found in Phase ${lastPhaseRecord.phase}.`
+      );
+    }
 
-  //   // 🔎 Check if today is BEFORE last scheduled date
-  //   const today = new Date();
-  //   if (today < lastWorkoutOfPhase.scheduledDate) {
-  //     throw new ApiError(
-  //       status.BAD_REQUEST,
-  //       `You must finish Phase ${lastPhaseRecord.phase} (last workout on ${lastWorkoutOfPhase.scheduledDate.toDateString()}) before moving to the next phase.`
-  //     );
-  //   }
-  // }
+    // 🔎 Check if today is BEFORE last scheduled date
+    const today = new Date();
+    if (today < lastWorkoutOfPhase.scheduledDate) {
+      throw new ApiError(
+        status.BAD_REQUEST,
+        `You must finish Phase ${lastPhaseRecord.phase} (last workout on ${lastWorkoutOfPhase.scheduledDate.toDateString()}) before moving to the next phase.`
+      );
+    }
+  }
 
   if (!generatedMission) {
     throw new ApiError(status.NOT_FOUND, "No generated mission found, please create one first.");
   }
   const nextPhase = 2;
-  const lastPhase = await workoutPlanService.lastPhasePlan(nextPhase, {
-      mission: generatedMission.mission,
-      time_commitment: generatedMission.timeCommitment,
-      gear: generatedMission.gearCheck,
-      squad: generatedMission.squad,
-    }, user.id);
+  const lastPhase = await workoutPlanService.Phase2Plan(nextPhase, {
+    mission: generatedMission.mission,
+    time_commitment: generatedMission.timeCommitment,
+    gear: generatedMission.gearCheck,
+    squad: generatedMission.squad,
+  }, user.id);
+
+  sendResponse(res, {
+    statusCode: status.OK,
+    message: "Last phase plan fetched successfully",
+    data: lastPhase,
+  });
+});
+
+const Phase3Plan = catchAsync(async (req, res) => {
+  const user = req.user;
+
+  if (!user) throw new ApiError(status.UNAUTHORIZED, "User not found");
+
+
+  const generatedMission = await prisma.mission.findFirst({
+    where: { userId: user.id },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const lastPhaseRecord = await prisma.workoutPlanDay.findFirst({
+    where: { userId: user.id },
+    orderBy: { phase: "desc" },
+  });
+
+  if (!lastPhaseRecord || lastPhaseRecord.phase !== 2) {
+    throw new ApiError(status.BAD_REQUEST, "You have to complete phase 1 and phase 2 first.");
+  }
+  console.log(lastPhaseRecord.scheduledDate);
+  // default first phase
+  if (lastPhaseRecord) {
+    // 🔎 Find the last scheduled workout of this phase
+    const lastWorkoutOfPhase = await prisma.workoutPlanDay.findFirst({
+      where: { userId: user.id, phase: lastPhaseRecord.phase },
+      orderBy: { scheduledDate: "desc" },
+    });
+
+    if (!lastWorkoutOfPhase) {
+      throw new ApiError(
+        status.BAD_REQUEST,
+        `No workouts found in Phase ${lastPhaseRecord.phase}.`
+      );
+    }
+
+    // 🔎 Check if today is BEFORE last scheduled date
+    const today = new Date();
+    if (today < lastWorkoutOfPhase.scheduledDate) {
+      throw new ApiError(
+        status.BAD_REQUEST,
+        `You must finish Phase ${lastPhaseRecord.phase} (last workout on ${lastWorkoutOfPhase.scheduledDate.toDateString()}) before moving to the next phase.`
+      );
+    }
+  }
+
+  if (!generatedMission) {
+    throw new ApiError(status.NOT_FOUND, "No generated mission found, please create one first.");
+  }
+  const nextPhase = 3;
+  const lastPhase = await workoutPlanService.Phase3Plan(nextPhase, {
+    mission: generatedMission.mission,
+    time_commitment: generatedMission.timeCommitment,
+    gear: generatedMission.gearCheck,
+    squad: generatedMission.squad,
+  }, user.id);
 
   sendResponse(res, {
     statusCode: status.OK,
@@ -192,6 +258,63 @@ const lastPhasePlan = catchAsync(async(req, res) => {
 //   });
 // });
 
+// const Phase3Plan = catchAsync(async (req, res) => {
+//   const user = req.user;
+
+//   if (!user) throw new ApiError(status.UNAUTHORIZED, "User not found");
+
+//   const generatedMission = await prisma.mission.findFirst({
+//     where: { userId: user.id },
+//     orderBy: { createdAt: "desc" },
+//   });
+
+//   const lastPhaseRecord = await prisma.workoutPlanDay.findFirst({
+//     where: { userId: user.id },
+//     orderBy: { phase: "desc" },
+//   });
+
+//   // default first phase
+//   if (lastPhaseRecord) {
+//     // 🔎 Find the last scheduled workout of this phase
+//     const lastWorkoutOfPhase = await prisma.workoutPlanDay.findFirst({
+//       where: { userId: user.id, phase: lastPhaseRecord.phase },
+//       orderBy: { scheduledDate: "desc" },
+//     });
+
+//     if (!lastWorkoutOfPhase) {
+//       throw new ApiError(
+//         status.BAD_REQUEST,
+//         `No workouts found in Phase ${lastPhaseRecord.phase}.`
+//       );
+//     }
+
+//     // 🔎 Check if today is BEFORE last scheduled date
+//     const today = new Date();
+//     if (today < lastWorkoutOfPhase.scheduledDate) {
+//       throw new ApiError(
+//         status.BAD_REQUEST,
+//         `You must finish Phase ${lastPhaseRecord.phase} (last workout on ${lastWorkoutOfPhase.scheduledDate.toDateString()}) before moving to the next phase.`
+//       );
+//     }
+//   }
+
+//   if (!generatedMission) {
+//     throw new ApiError(status.NOT_FOUND, "No generated mission found, please create one first.");
+//   }
+//   const nextPhase = 3;
+//   const lastPhase = await workoutPlanService.Phase3Plan(nextPhase, {
+//     mission: generatedMission.mission,
+//     time_commitment: generatedMission.timeCommitment,
+//     gear: generatedMission.gearCheck,
+//     squad: generatedMission.squad,
+//   }, user.id);
+
+//   sendResponse(res, {
+//     statusCode: status.OK,
+//     message: "Last phase plan fetched successfully",
+//     data: lastPhase,
+//   });
+// });
 
 const getTodayWorkoutController = catchAsync(async (req, res) => {
   const user = req.user;
@@ -213,8 +336,12 @@ const getTodayWorkoutController = catchAsync(async (req, res) => {
     squad: preferences.squad,
   };
 
+
   // ✅ Auto-complete past days and generate next phase if needed
-  //await workoutPlanService.autoProgressPhases(user.id, requestBody);
+  const lastPhaseRecord = await prisma.workoutPlanDay.findFirst({
+    where: { userId: user.id },
+    orderBy: { phase: "desc" },
+  });
 
   // ✅ Fetch today’s workout
   const startOfDay = new Date();
@@ -239,9 +366,9 @@ const getTodayWorkoutController = catchAsync(async (req, res) => {
 });
 
 export const phaseController = {
-  
   getTodayWorkoutController,
   phase1Plan,
-  lastPhasePlan,
+  Phase2Plan,
+  Phase3Plan
 };
 
