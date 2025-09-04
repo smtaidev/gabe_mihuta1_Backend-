@@ -1,11 +1,7 @@
-import { User } from '@prisma/client';
 import status from "http-status";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import { AuthService } from "./auth.service";
-import config from "../../config";
-import { log } from "console";
-import ApiError from "../../errors/ApiError";
 
 const login = catchAsync(async (req, res) => {
   const { email, password } = req.body;
