@@ -18,6 +18,7 @@ const sendResponse = <T>(res: Response, data: TResponse<T>) => {
 	res.status(data.statusCode).json({
 		success: true,
 		message: data.message,
+		statusCode: data.statusCode,
 		meta: data.meta || null || undefined,
 		data: data?.data || null || undefined,
 	});

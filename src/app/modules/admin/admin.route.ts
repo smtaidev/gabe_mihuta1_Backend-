@@ -8,6 +8,8 @@ import { upload } from "../../utils/upload";
 
 const router = Router();
 
+router.get("/getAllGroups", auth(), AdminController.getAllGroups);
+
 router.post("/create-group", auth(UserRole.SUPER_ADMIN), AdminController.createGroup);
 
 router.post("/getAllUser", auth(UserRole.SUPER_ADMIN), AdminController.getAllUser);
@@ -19,5 +21,7 @@ router.put("/update-admin", upload.single("file"),parseJsonData, auth(UserRole.S
 router.get("/getSingleUser/:userId", auth(UserRole.SUPER_ADMIN), AdminController.getSingleUser);
 
 router.patch("/suspend/:id",auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), AdminController.suspendUser);
+
+
 
 export const AdminRoutes = router;

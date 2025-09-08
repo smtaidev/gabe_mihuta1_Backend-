@@ -11,66 +11,66 @@ import { generateOTP } from "../../utils/generateOTP";
 import { User } from '@prisma/client';
 
 const createGroup = async (name: string, createdBy: string) => {
-    if (!name) {
-        throw new ApiError(status.BAD_REQUEST, "Group name is required");
+  if (!name) {
+    throw new ApiError(status.BAD_REQUEST, "Group name is required");
+  }
+
+  const group = await prisma.group.create({
+    data: {
+      name,
+      createdBy
     }
+  });
 
-    const group = await prisma.group.create({
-        data: {
-            name,
-            createdBy
-        }
-    });
-
-    return group;
+  return group;
 }
 
 const getAllUser = async () => {
-    const users = await prisma.user.findMany({
-        select: {
-            profilePic: true,
-            fullName: true,
-            email: true,
-            subscribed: true,
-            createdAt: true,
-        }
-    });
-    return users;
+  const users = await prisma.user.findMany({
+    select: {
+      profilePic: true,
+      fullName: true,
+      email: true,
+      subscribed: true,
+      createdAt: true,
+    }
+  });
+  return users;
 }
 
 interface SubscriberAggregate {
-    _id: number;   // month number (1-12)
-    total: number; // count
+  _id: number;   // month number (1-12)
+  total: number; // count
 }
 
 const getSubscribersPerMonth = async () => {
-    const result = await prisma.subscription.aggregateRaw({
-        pipeline: [
-            {
-                $group: {
-                    _id: { $month: "$createdAt" },
-                    total: { $sum: 1 },
-                },
-            },
-            {
-                $sort: { "_id": 1 },
-            },
-        ],
-    });
+  const result = await prisma.subscription.aggregateRaw({
+    pipeline: [
+      {
+        $group: {
+          _id: { $month: "$createdAt" },
+          total: { $sum: 1 },
+        },
+      },
+      {
+        $sort: { "_id": 1 },
+      },
+    ],
+  });
 
-    const data = result as unknown as SubscriberAggregate[];
+  const data = result as unknown as SubscriberAggregate[];
 
-    // Format to chart-friendly data
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  // Format to chart-friendly data
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-    return data.map((item: any) => ({
-        month: months[item._id - 1],
-        subscribers: item.total,
-    }));
+  return data.map((item: any) => ({
+    month: months[item._id - 1],
+    subscribers: item.total,
+  }));
 };
 
 const updateAdmin = async (userId: string, payload: any = {}) => {
-    const isUserExist = await prisma.user.findUnique({
+  const isUserExist = await prisma.user.findUnique({
     where: { id: userId },
   });
 
@@ -90,7 +90,7 @@ const updateAdmin = async (userId: string, payload: any = {}) => {
     payload.email = isUserExist.email;
   }
 
-  if(!payload.phone){
+  if (!payload.phone) {
     payload.phone = isUserExist.phone;
   }
 
@@ -119,27 +119,27 @@ const updateAdmin = async (userId: string, payload: any = {}) => {
 };
 
 const getSingleUser = async (userId: string) => {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-            profilePic: true,
-            fullName: true,
-            email: true,
-            gender: true,
-            age: true,
-            height: true,
-            weight: true,
-            level: true,
-            subscribed: true,
-            createdAt: true,
-        }
-    });
-
-    if (!user) {
-        throw new ApiError(status.NOT_FOUND, "User not found");
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      profilePic: true,
+      fullName: true,
+      email: true,
+      gender: true,
+      age: true,
+      height: true,
+      weight: true,
+      level: true,
+      subscribed: true,
+      createdAt: true,
     }
+  });
 
-    return user;
+  if (!user) {
+    throw new ApiError(status.NOT_FOUND, "User not found");
+  }
+
+  return user;
 };
 
 export const suspendUser = async (userId: string): Promise<User> => {
@@ -163,11 +163,22 @@ export const suspendUser = async (userId: string): Promise<User> => {
   return updatedUser;
 };
 
+const getAllGroups = async () => {
+  const groups = await prisma.group.findMany();
+
+  if (groups.length === 0) {
+    throw new ApiError(status.NOT_FOUND, "No groups found");
+  }
+
+  return groups;
+}
+
 export const AdminService = {
-    createGroup,
-    getAllUser,
-    getSubscribersPerMonth,
-    updateAdmin,
-    getSingleUser,
-    suspendUser,
+  createGroup,
+  getAllUser,
+  getAllGroups,
+  getSubscribersPerMonth,
+  updateAdmin,
+  getSingleUser,
+  suspendUser,
 };

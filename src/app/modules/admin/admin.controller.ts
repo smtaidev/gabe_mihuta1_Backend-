@@ -68,7 +68,7 @@ const getSingleUser = catchAsync(async (req, res) => {
     });
 });
 
-export const suspendUser = catchAsync(async (req, res) => {
+const suspendUser = catchAsync(async (req, res) => {
   const { id } = req.params;
 
   const result = await AdminService.suspendUser(id);
@@ -80,6 +80,15 @@ export const suspendUser = catchAsync(async (req, res) => {
   });
 });
 
+const getAllGroups = catchAsync(async (req, res) => {
+    const groups = await AdminService.getAllGroups();
+    sendResponse(res, {
+        statusCode: status.OK,
+        message: 'Groups retrieved successfully',
+        data: groups,
+    });
+});
+
 export const AdminController = {
     createGroup,
     getAllUser,
@@ -87,4 +96,5 @@ export const AdminController = {
     updateAdmin,
     getSingleUser,
     suspendUser,
+    getAllGroups,
 };
