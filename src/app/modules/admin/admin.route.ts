@@ -12,7 +12,7 @@ router.get("/getAllGroups", auth(), AdminController.getAllGroups);
 
 router.post("/create-group", auth(UserRole.SUPER_ADMIN), AdminController.createGroup);
 
-router.post("/getAllUser", auth(UserRole.SUPER_ADMIN), AdminController.getAllUser);
+router.get("/getAllUser", auth(UserRole.SUPER_ADMIN), AdminController.getAllUser);
 
 router.get("/subscribers-per-month", auth(UserRole.SUPER_ADMIN), AdminController.getSubscribersPerMonth);
 
