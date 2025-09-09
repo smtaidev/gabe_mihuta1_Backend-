@@ -23,5 +23,4 @@ router.get("/getSingleUser/:userId", auth(UserRole.SUPER_ADMIN), AdminController
 router.patch("/suspend/:id",auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), AdminController.suspendUser);
 
 
-
 export const AdminRoutes = router;
