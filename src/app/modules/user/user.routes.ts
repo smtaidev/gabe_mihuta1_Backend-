@@ -6,14 +6,21 @@ import { UserValidation } from "./user.validation";
 import { UserController } from "./user.controller";
 import validateRequest from "../../middlewares/validateRequest";
 import { NextFunction, Request, Response, Router } from "express";
-import {upload} from "../../utils/upload";
-
+import { upload } from "../../utils/upload";
 
 const router = Router();
 
-router.get("/", auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), UserController.getAllUser);
+router.get(
+  "/",
+  auth(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+  UserController.getAllUser
+);
 
-router.get("/:userId", auth(UserRole.SUPER_ADMIN, UserRole.ADMIN), UserController.getSingleUserById);
+router.get(
+  "/:userId",
+  auth(UserRole.SUPER_ADMIN, UserRole.ADMIN),
+  UserController.getSingleUserById
+);
 router.delete(
   "/delete-user",
   auth(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.USER),
@@ -28,8 +35,9 @@ router.post(
 
 router.post("/verify-otp", UserController.verifyOTP);
 
-router.put("/update-user",
-  upload.single('file'),
+router.put(
+  "/update-user",
+  upload.single("file"),
   (req: Request, res: Response, next: NextFunction) => {
     try {
       if (req.body?.data) {
@@ -40,9 +48,9 @@ router.put("/update-user",
       next(new ApiError(status.BAD_REQUEST, "Invalid JSON in 'data' field"));
     }
   },
-  auth(UserRole.USER), UserController.updateUser);
-
-
+  auth(UserRole.USER),
+  UserController.updateUser
+);
 
 router.post(
   "/resend-otp",
@@ -50,4 +58,8 @@ router.post(
   UserController.resendOtp
 );
 
+
+// rs
+router.post("/:userId/workout", UserController.logWorkout);
+router.get("/:userId/progress", UserController.getUserProgress);
 export const UserRoutes = router;

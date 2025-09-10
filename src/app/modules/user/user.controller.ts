@@ -55,7 +55,7 @@ const getSingleUserById = catchAsync(async (req, res) => {
 });
 
 const updateUser = catchAsync(async (req, res) => {
-  const  userId  = req.user.id;
+  const userId = req.user.id;
 
   console.log(userId);
 
@@ -105,7 +105,35 @@ const deleteUser = catchAsync(async (req, res) => {
   });
 });
 
+// rs
+const logWorkout = catchAsync(async (req, res) => {
+  const { exerciseType, duration } = req.body;
+  const { userId } = req.params;
 
+  const result = await UserService.logWorkoutService(
+    userId,
+    exerciseType,
+    duration
+  );
+
+  sendResponse(res, {
+    statusCode: status.OK,
+    message: "Workout logged successfully!",
+    data: result,
+  });
+});
+
+const getUserProgress = catchAsync(async (req, res) => {
+  const { userId } = req.params;
+
+  const result = await UserService.getUserProgressService(userId);
+
+  sendResponse(res, {
+    statusCode: status.OK,
+    message: "User progress retrieved successfully!",
+    data: result,
+  });
+});
 
 export const UserController = {
   createUser,
@@ -115,4 +143,7 @@ export const UserController = {
   verifyOTP,
   deleteUser,
   resendOtp,
+  // rs
+  logWorkout,
+  getUserProgress,
 };

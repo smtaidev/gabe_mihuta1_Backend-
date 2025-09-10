@@ -7,6 +7,7 @@ import hashPassword from "../../helpers/hashPassword";
 import { sendOTPEmail } from "../../utils/sendOtp";
 import { generateOTP } from "../../utils/generateOTP";
 import { adminSockets } from "../../helpers/chat";
+import { calculateCalories } from "../../utils/calorieCalculator";
 
 const otpStore: { [key: string]: { otp: string; timestamp: number } } = {};
 
@@ -267,6 +268,69 @@ const deleteUser = async (userId: string) => {
   return deletedUser;
 };
 
+
+//rs
+ const logWorkoutService = async (
+  userId: string,
+  exerciseType: string,
+  duration: number
+) => {
+  // 1. Get user info
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new Error("User not found");
+
+  // 2. Calculate calories burned
+  const weight = user.weight ?? 0; // If null, default to 0
+  const calories = calculateCalories(weight, exerciseType, duration);
+
+
+  // 3. Check if progress exists
+  let progress = await prisma.userProgress.findUnique({ where: { userId } });
+
+  if (!progress) {
+    // Create new progress record
+    progress = await prisma.userProgress.create({
+      data: {
+        userId,
+        totalWorkouts: 0,
+        totalTrainingTime: 0,
+        caloriesBurned: 0,
+        xp: 0,
+        streakCounter: 0,
+        badges: [],
+      },
+    });
+  }
+
+  // 4. Update progress
+  const updatedProgress = await prisma.userProgress.update({
+    where: { userId },
+    data: {
+      totalWorkouts: progress.totalWorkouts + 1,
+      totalTrainingTime: progress.totalTrainingTime + duration / 60,
+      caloriesBurned: progress.caloriesBurned + calories,
+      xp: progress.xp + Math.floor(calories / 10),
+    },
+  });
+
+  return {
+    caloriesBurned: calories,
+    totalCalories: updatedProgress.caloriesBurned,
+    xp: updatedProgress.xp,
+  };
+};
+
+ const getUserProgressService = async (userId: string) => {
+  const progress = await prisma.userProgress.findUnique({
+    where: { userId },
+    include: { user: true },
+  });
+
+  if (!progress) throw new Error("Progress not found");
+  return progress;
+};
+
+
 export const UserService = {
   createUserIntoDB,
   getAllUserFromDB,
@@ -275,5 +339,8 @@ export const UserService = {
   verifyOTP,
   deleteUser,
   resendOtp,
+  // rs
+  logWorkoutService,
+  getUserProgressService,
 };
 
