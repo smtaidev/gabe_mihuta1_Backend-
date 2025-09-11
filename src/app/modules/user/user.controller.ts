@@ -123,7 +123,7 @@ const logWorkout = catchAsync(async (req, res) => {
   });
 });
 
-const getUserProgress = catchAsync(async (req, res) => {
+export const getUserProgress = catchAsync(async (req, res) => {
   const { userId } = req.params;
 
   const result = await UserService.getUserProgressService(userId);

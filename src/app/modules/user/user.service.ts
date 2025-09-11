@@ -8,9 +8,9 @@ import { sendOTPEmail } from "../../utils/sendOtp";
 import { generateOTP } from "../../utils/generateOTP";
 import { adminSockets } from "../../helpers/chat";
 import { calculateCalories } from "../../utils/calorieCalculator";
+import { ExerciseType, exerciseTypes } from "../../interface/exerciseTypes";
 
 const otpStore: { [key: string]: { otp: string; timestamp: number } } = {};
-
 
 const createUserIntoDB = async (payload: any) => {
   const { fullName, email, password } = payload;
@@ -80,7 +80,7 @@ const createUserIntoDB = async (payload: any) => {
     message:
       "We have sent a confirmation email to your email address. Please check your inbox.",
   };
-}
+};
 
 export const verifyOTP = async (email: string, otp: string) => {
   if (!email || !otp) {
@@ -268,27 +268,31 @@ const deleteUser = async (userId: string) => {
   return deletedUser;
 };
 
-
 //rs
- const logWorkoutService = async (
+const logWorkoutService = async (
   userId: string,
   exerciseType: string,
   duration: number
 ) => {
+  // ✅ Validate exerciseType
+  if (!exerciseTypes.includes(exerciseType as ExerciseType)) {
+    throw new Error(
+      `Invalid exerciseType. Must be one of: ${exerciseTypes.join(", ")}`
+    );
+  }
+
   // 1. Get user info
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new Error("User not found");
 
   // 2. Calculate calories burned
-  const weight = user.weight ?? 0; // If null, default to 0
+  const weight = user.weight ?? 0;
   const calories = calculateCalories(weight, exerciseType, duration);
-
 
   // 3. Check if progress exists
   let progress = await prisma.userProgress.findUnique({ where: { userId } });
 
   if (!progress) {
-    // Create new progress record
     progress = await prisma.userProgress.create({
       data: {
         userId,
@@ -320,7 +324,7 @@ const deleteUser = async (userId: string) => {
   };
 };
 
- const getUserProgressService = async (userId: string) => {
+const getUserProgressService = async (userId: string) => {
   const progress = await prisma.userProgress.findUnique({
     where: { userId },
     include: { user: true },
@@ -329,7 +333,6 @@ const deleteUser = async (userId: string) => {
   if (!progress) throw new Error("Progress not found");
   return progress;
 };
-
 
 export const UserService = {
   createUserIntoDB,
@@ -343,4 +346,3 @@ export const UserService = {
   logWorkoutService,
   getUserProgressService,
 };
-
