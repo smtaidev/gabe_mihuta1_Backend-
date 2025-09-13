@@ -74,7 +74,7 @@ const handlePaymentIntentSucceeded = async (
       },
     }),
   ]);
-  prisma.user.update({
+  await prisma.user.update({
     where: { id: payment.userId },
     data: {
       subscribed: "SUBSCRIBED",
