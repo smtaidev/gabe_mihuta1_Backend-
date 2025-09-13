@@ -1,3 +1,4 @@
+import { Subscription } from './../../../../node_modules/.prisma/client/index.d';
 import status from "http-status";
 import config from "../../config";
 import prisma from "../../utils/prisma";
@@ -33,6 +34,7 @@ const getAllUser = async () => {
       email: true,
       subscribed: true,
       createdAt: true,
+      phase: true,
     }
   });
   return users;
@@ -173,10 +175,28 @@ const getAllGroups = async () => {
   return groups;
 }
 
+const getTotal = async () => {
+    const totalUser = await prisma.user.count();
+
+    const totalSubscription = await prisma.user.findMany({
+      where: {
+        subscribed: "SUBSCRIBED",
+      },
+    }).then(subs => subs.length
+    );
+
+    const total: { totalUsers: number; totalSubscriptions: number } = {
+        totalUsers: totalUser,
+        totalSubscriptions: totalSubscription,
+    };
+    return total;
+}
+
 export const AdminService = {
   createGroup,
   getAllUser,
   getAllGroups,
+  getTotal,
   getSubscribersPerMonth,
   updateAdmin,
   getSingleUser,

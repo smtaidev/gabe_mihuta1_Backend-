@@ -89,6 +89,15 @@ const getAllGroups = catchAsync(async (req, res) => {
     });
 });
 
+const getTotal = catchAsync(async (req, res) => {
+    const total = await AdminService.getTotal();
+    sendResponse(res, {
+        statusCode: status.OK,
+        message: 'Total subscribers retrieved successfully',
+        data: total,
+    });
+});
+
 export const AdminController = {
     createGroup,
     getAllUser,
@@ -97,4 +106,5 @@ export const AdminController = {
     getSingleUser,
     suspendUser,
     getAllGroups,
+    getTotal,
 };
