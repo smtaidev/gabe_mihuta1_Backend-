@@ -27,6 +27,7 @@ const createGroup = async (name: string, createdBy: string) => {
 }
 
 const getAllUser = async () => {
+
   const users = await prisma.user.findMany({
     select: {
       profilePic: true,
@@ -38,8 +39,12 @@ const getAllUser = async () => {
       missions: {
         select: {
           squad: true,
-        }
-      }
+        },
+        orderBy: {
+          createdAt: "desc", // latest mission first
+        },
+        take: 1, // only the last one
+      },
     }
   });
   return users;
