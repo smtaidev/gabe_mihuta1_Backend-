@@ -189,6 +189,11 @@ const Phase2Plan = async (phase: number,
         },
       });
 
+      await prisma.user.update({
+        where: { id: userId },
+        data: { phase: 2 },
+      });
+
       savedDays.push(saved);
     }
     // 4️⃣ Return saved DB records
@@ -433,6 +438,11 @@ const Phase3Plan = async (phase: number,
           scheduledDate,
           completed: false,
         },
+      });
+
+      await prisma.user.update({
+        where: { id: userId },
+        data: { phase: 3 },
       });
 
       savedDays.push(saved);

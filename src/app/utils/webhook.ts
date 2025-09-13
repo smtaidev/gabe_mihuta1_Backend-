@@ -81,7 +81,6 @@ const handlePaymentIntentSucceeded = async (
       //planExpiration: endDate,
     },
   });
-
 };
 
 const handlePaymentIntentFailed = async (

@@ -55,6 +55,7 @@ model User {
   planExpiration    DateTime?
   phone             String?
   subscribed        String?    @default("FREE_USER")
+  phase             Int?       @default(1)
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
@@ -129,6 +130,7 @@ model WorkoutPlanDay {
   motivationalQuote String
   isWorkoutDay      Boolean
   videoUrl          String?
+
   phase             Int
   completed         Boolean  @default(false)
   scheduledDate     DateTime // <-- new field: the date this workout is assigned
