@@ -130,7 +130,7 @@ model WorkoutPlanDay {
   motivationalQuote String
   isWorkoutDay      Boolean
   videoUrl          String?
-
+  caloriesBurned   Int?
   phase             Int
   completed         Boolean  @default(false)
   scheduledDate     DateTime // <-- new field: the date this workout is assigned

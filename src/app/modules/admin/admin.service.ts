@@ -35,6 +35,11 @@ const getAllUser = async () => {
       subscribed: true,
       createdAt: true,
       phase: true,
+      missions: {
+        select: {
+          squad: true,
+        }
+      }
     }
   });
   return users;
@@ -176,20 +181,43 @@ const getAllGroups = async () => {
 }
 
 const getTotal = async () => {
-    const totalUser = await prisma.user.count();
+  const totalUser = await prisma.user.count();
 
-    const totalSubscription = await prisma.user.findMany({
-      where: {
-        subscribed: "SUBSCRIBED",
+  const totalSubscription = await prisma.user.findMany({
+    where: {
+      subscribed: "SUBSCRIBED",
+    },
+  }).then(subs => subs.length
+  );
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const total_30_Revenue = await prisma.subscription.aggregate({
+    _sum: {
+      amount: true,
+    },
+    where: {
+      createdAt: {
+        gte: thirtyDaysAgo, // only subscriptions from last 30 days
       },
-    }).then(subs => subs.length
-    );
+      paymentStatus: "COMPLETED", // optional: count only successful payments
+    },
+  }).then(res => res._sum.amount || 0);
 
-    const total: { totalUsers: number; totalSubscriptions: number } = {
-        totalUsers: totalUser,
-        totalSubscriptions: totalSubscription,
-    };
-    return total;
+  const totalRevenue = await prisma.subscription.aggregate({
+    _sum: {
+      amount: true,
+    },
+  }).then(res => res._sum.amount || 0);
+
+  const total: { totalUsers: number; totalSubscriptions: number; totalRevenue: number; total_30_Revenue: number } = {
+    totalUsers: totalUser,
+    totalSubscriptions: totalSubscription,
+    totalRevenue,
+    total_30_Revenue
+  };
+  return total;
 }
 
 export const AdminService = {

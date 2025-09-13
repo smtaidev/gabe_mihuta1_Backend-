@@ -14,6 +14,7 @@ interface AIWorkoutDay {
   motivational_quote: string;
   is_workout_day: boolean;
   video_url: string | null;
+  calories_burned?: number; // optional
 }
 
 interface FetchAIWorkoutPlanRequest {
@@ -35,6 +36,7 @@ const phase1Plan = async (
   userId: string
 ) => {
   const aiApiUrl = PHASE_APIS[phase];
+  console.log(aiApiUrl);
   if (!aiApiUrl) return []; // No API, skip
 
   try {
@@ -89,6 +91,7 @@ const phase1Plan = async (
           motivationalQuote: day.motivational_quote, // map snake_case -> camelCase
           isWorkoutDay: day.is_workout_day,
           videoUrl: day.video_url,
+          caloriesBurned: day.calories_burned,
           phase,
           scheduledDate,
           completed: false,
